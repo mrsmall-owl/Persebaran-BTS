@@ -186,7 +186,24 @@ function initMap() {
     drk: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }),
   };
   bms.osm.addTo(map);
+ 
+  #BatasRiau
+  fetch("data/Batas.json")
+  .then(response => response.json())
+  .then(data => {
 
+    L.geoJSON(data, {
+
+      style: {
+        color: "#00ffff",
+        weight: 3,
+        opacity: 0.8,
+        fillColor: "#00ffff",
+        fillOpacity: 0.05
+      }
+    }).addTo(map);
+
+  });
   // #MAP — Event listener radio button ganti basemap
   document.querySelectorAll('input[name=bm]').forEach(r => r.addEventListener('change', () => {
     Object.values(bms).forEach(b => map.removeLayer(b));
