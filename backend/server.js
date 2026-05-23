@@ -14,11 +14,10 @@ app.use(express.json());
 // ======================
 
 const pool = new Pool({
-  user: "postgres",
-  host: "localhost",
-  database: "BTS_Riau",
-  password: "Dirrasql67",
-  port: 5432
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
 // ======================
@@ -28,10 +27,6 @@ const pool = new Pool({
 app.get("/", (req, res) => {
   res.send("Backend WebGIS aktif");
 });
-
-// ======================
-// AMBIL DATA BTS
-// ======================
 
 // ======================
 // AMBIL DATA BTS
@@ -83,6 +78,8 @@ app.get("/bts", async (req, res) => {
 // JALANKAN SERVER
 // ======================
 
-app.listen(3000, () => {
-  console.log("Server running on http://localhost:3000");
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
