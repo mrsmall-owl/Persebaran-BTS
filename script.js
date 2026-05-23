@@ -9,7 +9,7 @@ async function loadBTSData() {
 
   try {
 
-    const response = await fetch('https://persebaran-bts-production.up.railway.app/bts');
+    const response = await fetch('http://localhost:3000/bts');
 
     BTS = await response.json();
 
@@ -164,12 +164,24 @@ document.addEventListener('keydown', e => {
 // ============================================================
 // #MAP — Inisialisasi & rendering peta Leaflet
 // ============================================================
-
+let yearChart;
 let map, cgr, pgr, hlr, mm = {};
 let mapInited = false;
 let aops  = new Set(['Telkomsel', 'Indosat', 'XL Axiata', 'Tri']);
 let anets = new Set(['2G', '3G', '4G', '5G']);
-let akabs = new Set();
+let akabs = new Set([
+  "Bengkalis",
+  "Indragiri Hilir",
+  "Indragiri Hulu",
+  "Kampar",
+  "Kuantan Singingi",
+  "Pelalawan",
+  "Rokan Hilir",
+  "Rokan Hulu",
+  "Siak",
+  "Kota Dumai",
+  "Kota Pekanbaru"
+]);
 let sq = '', clMode = true, selId = null;
 
 // #MAP — Inisialisasi peta Leaflet (hanya sekali), setup layer & event listener
@@ -187,19 +199,18 @@ function initMap() {
   };
   bms.osm.addTo(map);
  
-  #BatasRiau
+  //BatasRiau
   fetch("data/Batas.json")
   .then(response => response.json())
   .then(data => {
 
     L.geoJSON(data, {
-
       style: {
-        color: "#00ffff",
-        weight: 3,
-        opacity: 0.8,
-        fillColor: "#00ffff",
-        fillOpacity: 0.05
+        color: "#414646",
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0,
+        dashArray: "2,5"
       }
     }).addTo(map);
 
@@ -225,12 +236,35 @@ function initMap() {
   map.addLayer(cgr);
 
   // #FILTER — Render chip filter Kab/Kota secara dinamis dari data BTS
-  const kabs = [...new Set(BTS.map(d => d.kab_kota))].sort();
+  const kabs = [
+
+  "Bengkalis",
+  "Indragiri Hilir",
+  "Indragiri Hulu",
+  "Kampar",
+  "Kuantan Singingi",
+  "Pelalawan",
+  "Rokan Hilir",
+  "Rokan Hulu",
+  "Siak",
+  "Kota Dumai",
+  "Kota Pekanbaru"
+
+];
   document.getElementById('f-kab').innerHTML = kabs.map(k =>
     `<button class="chip" data-kab="${k}">${k}</button>`
   ).join('');
 
   // #FILTER — Event listener chip Kab/Kota
+  document.querySelectorAll('#f-kab .chip').forEach(b => {
+
+    if (akabs.has(b.dataset.kab)) {
+
+      b.classList.add('active');
+
+    }
+  });
+
   document.querySelectorAll('#f-kab .chip').forEach(b => b.addEventListener('click', () => {
     const k = b.dataset.kab;
     if (akabs.has(k)) { akabs.delete(k); b.classList.remove('active'); }
@@ -293,15 +327,18 @@ function initMap() {
 function getFiltered() {
   const q = sq.toLowerCase();
   return BTS.filter(d =>
+
     aops.has(d.operator) &&
     anets.has(d.jaringan) &&
-    (akabs.size === 0 || akabs.has(d.kab_kota)) &&
+    akabs.has(d.kab_kota) &&
+
     (
-      q === '' || 
-      d.nama_bts.toLowerCase().includes(q) || 
+      q === '' ||
+      d.nama_bts.toLowerCase().includes(q) ||
       d.kab_kota.toLowerCase().includes(q) ||
       d.operator.toLowerCase().includes(q)
     )
+
   );
 }
 
@@ -361,6 +398,29 @@ function mkPopup(d) {
   </div>`;
 }
 
+// #EXPORT — Update informasi export berdasarkan filter aktif
+function updateExportInfo(){
+
+  const data = getFiltered();
+
+  document.getElementById('ex-total')
+    .textContent =
+      `${data.length} BTS`;
+
+  document.getElementById('ex-op')
+    .textContent =
+      [...aops].join(', ') || 'Semua';
+
+  document.getElementById('ex-net')
+    .textContent =
+      [...anets].join(', ') || 'Semua';
+
+  document.getElementById('ex-kab')
+    .textContent =
+      [...akabs].join(', ') || 'Semua';
+
+}
+
 // #MAP — Render ulang semua marker sesuai filter aktif
 function renderMap() {
   cgr.clearLayers(); pgr.clearLayers(); mm = {};
@@ -376,7 +436,7 @@ function renderMap() {
   document.getElementById('hs-sh').textContent  = f.length;
   document.getElementById('lcount').textContent = f.length;
   document.getElementById('stot').textContent   = f.length;
-  renderList(f); renderStats(f); renderHeat(f);
+  renderList(f); renderStats(f); renderHeat(f); renderYearChart(f); updateExportInfo();
 }
 
 // #MAP — Render daftar BTS di panel sidebar kiri
@@ -394,6 +454,104 @@ function renderList(f) {
   document.querySelectorAll('.bitem').forEach(el =>
     el.addEventListener('click', () => selBTS(+el.dataset.id))
   );
+}
+
+// #STATISTIK — Grafik BTS per tahun
+function renderYearChart(data){
+
+  const tahunMap = {};
+
+  data.forEach(d => {
+    const th = d.tahun || "Tidak Ada";
+    tahunMap[th] = (tahunMap[th] || 0) + 1;
+  });
+
+  const labels = Object.keys(tahunMap).sort();
+  const values = labels.map(l => tahunMap[l]);
+
+  const ctx = document.getElementById('yearChart');
+
+  if(yearChart){
+    yearChart.destroy();
+  }
+
+  yearChart = new Chart(ctx, {
+    type: 'line',
+
+    data: {
+      labels: labels,
+
+      datasets: [{
+        label: 'Jumlah BTS',
+        data: values,
+        borderColor: '#00ffff',
+        borderWidth: 3,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        pointBackgroundColor: '#00ffff',
+        pointStyle: 'line',
+        backgroundColor: 'rgba(0,255,255,0.15)',
+        tension: 0.3,
+        fill: true
+      }]
+    },
+
+    options: {
+      responsive: true,
+
+      plugins: {
+        legend: {
+          labels: {
+            usePointStyle: true,
+            pointStyle: 'line',
+            color: '#00ffff',
+
+            font: {
+              family: 'Orbitron',
+              size: 12
+            }
+          }
+        }
+      },
+
+      scales: {
+
+        x: {
+          grid: {
+            color: 'rgba(0,255,255,0.08)'
+          },
+
+          ticks: {
+            color: '#7ee7ff',
+
+            font: {
+              family: 'Orbitron',
+              size: 11
+            }
+          }
+        },
+
+        y: {
+          grid: {
+            color: 'rgba(0,255,255,0.08)'
+          },
+
+          ticks: {
+            color: '#7ee7ff',
+
+            font: {
+              family: 'Orbitron',
+              size: 11
+            }
+          }
+        }
+
+      }
+
+    }
+
+  });
+
 }
 
 // #STATS — Render statistik distribusi BTS (per operator, jaringan, kab/kota)
@@ -414,19 +572,49 @@ function renderStats(f) {
   document.getElementById('st-kab').innerHTML = bars(cnt(f, 'kab_kota'), null);
 }
 
-// #MAP — Render layer heatmap berupa lingkaran transparan per BTS
+// #MAP — Heatmap Kepadatan BTS untuk Analisis Blankspot
 function renderHeat(f) {
-  if (hlr) { map.removeLayer(hlr); hlr = null; }
+
+  if (hlr) {
+
+    map.removeLayer(hlr);
+    hlr = null;
+
+  }
+
   if (!document.getElementById('lyr-hm').checked) return;
-  hlr = L.layerGroup(f.map(d =>
-    L.circle([d.latitude, d.longitude], {
-      radius: 15000,
-      color: 'transparent',
-      fillColor: OPC[d.operator] || '#0097A7',
-      fillOpacity: .12
-    })
-  ));
+
+  // DATA HEATMAP
+  const heatData = f.map(d => [
+
+    parseFloat(d.latitude),
+    parseFloat(d.longitude),
+    1
+
+  ]);
+
+  // BUAT HEATMAP
+  hlr = L.heatLayer(heatData, {
+
+    radius: 28,
+    blur: 20,
+    maxZoom: 12,
+    minOpacity: 0.25,
+
+    gradient: {
+
+      0.2: '#00ff88',
+      0.4: '#00d5ff',
+      0.6: '#ffee00',
+      0.8: '#ff8800',
+      1.0: '#ff0000'
+
+    }
+
+  });
+
   map.addLayer(hlr);
+
 }
 
 // #MAP — Pilih BTS: fly to marker, buka popup, highlight item daftar
@@ -469,143 +657,6 @@ function showNtf(msg) {
 
 
 // ============================================================
-// #PREPROCESSING — Panel preprocessing data (Minggu 3)
-// ============================================================
-
-// #PREPROCESSING — Navigasi antar sub-section panel preprocessing
-function showPPSection(id) {
-  document.querySelectorAll('.pp-section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.pp-nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  event.currentTarget.classList.add('active');
-}
-
-// #PREPROCESSING — Konversi derajat desimal ke format DMS (Derajat Menit Detik)
-function decToDMS(deg) {
-  const d = Math.floor(Math.abs(deg));
-  const m = Math.floor((Math.abs(deg) - d) * 60);
-  const s = ((Math.abs(deg) - d - m / 60) * 3600).toFixed(1);
-  return `${d}°${m}'${s}" ${deg >= 0 ? 'N/E' : 'S/W'}`;
-}
-
-// #PREPROCESSING — Validasi apakah koordinat berada di dalam bounding box Riau
-function isValidRiau(lat, lng) {
-  return lat >= -0.9982 && lat <= 2.9167 && lng >= 100.2167 && lng <= 102.7833;
-}
-
-let ppInited = false;
-
-// #PREPROCESSING — Inisialisasi seluruh tabel dan konten panel preprocessing (hanya sekali)
-function initPP() {
-  if (ppInited) return;
-  ppInited = true;
-
-  // #PREPROCESSING — Render tabel sampel hasil cleaning data (10 record pertama)
-  const ctb = document.getElementById('cleaning-table');
-  ctb.innerHTML = BTS.slice(0, 10).map(d => `<tr>
-    <td style="color:var(--accent);font-family:'Space Mono',monospace">${d.id_bts}</td>
-    <td>${d.nama}</td>
-    <td>${d.operator}</td>
-    <td><span style="background:${NETC[d.jaringan]}22;color:${NETC[d.jaringan]};padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">${d.jaringan}</span></td>
-    <td>${d.kab_kota}</td>
-    <td><span class="pp-badge ok" style="font-size:10px">✓ ${d.status}</span></td>
-    <td style="font-family:'Space Mono',monospace">${d.tahun}</td>
-  </tr>`).join('');
-
-  // #PREPROCESSING — Render tabel validasi koordinat & hitung statistik
-  const vtb = document.getElementById('validasi-table');
-  let validOk = 0, validErr = 0;
-  vtb.innerHTML = BTS.map(d => {
-    const ok = isValidRiau(d.latitude, d.longitude);
-    if (ok) validOk++; else validErr++;
-    return `<tr>
-      <td style="color:var(--accent);font-family:'Space Mono',monospace">${d.id_bts}</td>
-      <td>${d.nama}</td>
-      <td class="coord-val">${d.latitude.toFixed(4)}</td>
-      <td class="coord-val">${d.longitude.toFixed(4)}</td>
-      <td>${d.kab_kota}</td>
-      <td>${ok ? '<span class="pp-badge ok">✓ Valid</span>' : '<span class="pp-badge err">✗ Outlier</span>'}</td>
-    </tr>`;
-  }).join('');
-  document.getElementById('val-total').textContent = BTS.length;
-  document.getElementById('val-ok').textContent    = validOk;
-  document.getElementById('val-err').textContent   = validErr;
-  document.getElementById('val-pct').textContent   = ((validOk / BTS.length) * 100).toFixed(1) + '%';
-
-  // #PREPROCESSING — Render preview GeoJSON (2 feature pertama sebagai sampel)
-  const gjSample = {
-    type: "FeatureCollection",
-    crs: { type: "name", properties: { name: "urn:ogc:def:crs:OGC:1.3:CRS84" } },
-    features: BTS.slice(0, 2).map(d => ({
-      type: "Feature",
-      geometry: { type: "Point", coordinates: [d.longitude, d.latitude] },
-      properties: { id: d.id_bts, nama: d.nama_bts, operator: d.operator, jaringan: d.jaringan, kab_kota: d.kab_kota, tahun: d.tahun }
-    }))
-  };
-  document.getElementById('geojson-preview').textContent =
-    JSON.stringify(gjSample, null, 2).substring(0, 900) + '...\n// (+ ' + (BTS.length - 2) + ' features lainnya)';
-  document.getElementById('gj-count').textContent = BTS.length + ' features';
-
-  // #PREPROCESSING — Render tabel sampel koordinat WGS84 + format DMS (8 record)
-  const wtb = document.getElementById('wgs84-table');
-  wtb.innerHTML = BTS.slice(0, 8).map(d => `<tr>
-    <td>${d.nama_bts}</td>
-    <td>${d.kab_kota}</td>
-    <td class="coord-val">${d.latitude.toFixed(5)}°</td>
-    <td class="coord-val">${d.longitude.toFixed(5)}°</td>
-    <td style="font-size:10px;color:rgba(255,255,255,.45)">${decToDMS(d.latitude)}, ${decToDMS(d.longitude)}</td>
-  </tr>`).join('');
-
-  // #PREPROCESSING — Render daftar area blank spot (kab/kota dengan BTS < 2)
-  const kabCount = BTS.reduce((a, d) => { a[d.kab_kota] = (a[d.kab_kota] || 0) + 1; return a }, {});
-  const allKabs  = ['Pekanbaru','Dumai','Kampar','Rokan Hulu','Rokan Hilir','Bengkalis','Siak','Pelalawan','Indragiri Hulu','Indragiri Hilir','Kuantan Singingi','Kepulauan Meranti'];
-  const bsl      = document.getElementById('blankspot-list');
-  const lowKabs  = allKabs.filter(k => (kabCount[k] || 0) < 2);
-  bsl.innerHTML  = lowKabs.map(k => `<div class="blank-spot-item">
-    <div class="blank-dot"></div>
-    <div class="blank-area">${k}</div>
-    <div class="blank-meta">${kabCount[k] || 0} BTS tercatat</div>
-    <span class="pp-badge ${(kabCount[k] || 0) === 0 ? 'err' : 'warn'}">${(kabCount[k] || 0) === 0 ? 'Tidak ada data' : 'Coverage rendah'}</span>
-  </div>`).join('') || '<div style="color:var(--green);font-size:13px">✓ Semua kabupaten memiliki coverage BTS</div>';
-
-  // #PREPROCESSING — Render bar chart distribusi BTS per kab/kota
-  const dl     = document.getElementById('density-list');
-  const sorted = Object.entries(kabCount).sort((a, b) => b[1] - a[1]);
-  const max    = sorted[0][1];
-  dl.innerHTML = sorted.map(([k, v]) => `<div style="margin-bottom:10px">
-    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
-      <span style="color:rgba(255,255,255,.7)">${k}</span>
-      <span style="font-weight:700;color:var(--accent)">${v} BTS</span>
-    </div>
-    <div class="pp-progress">
-      <div class="pp-progress-fill" style="width:${(v / max * 100).toFixed(0)}%;background:${v >= 5 ? 'var(--green)' : v >= 3 ? 'var(--cyan)' : '#FFB300'}"></div>
-    </div>
-  </div>`).join('');
-
-  document.getElementById('sum-total').textContent = BTS.length;
-}
-
-// #PREPROCESSING — Export seluruh data BTS ke file bts_riau.geojson
-function downloadGeoJSON() {
-  const gj = {
-    type: "FeatureCollection",
-    crs: { type: "name", properties: { name: "urn:ogc:def:crs:OGC:1.3:CRS84" } },
-    features: BTS.map(d => ({
-      type: "Feature",
-      geometry: { type: "Point", coordinates: [d.longitude, d.latitude] },
-      properties: { id: d.id_bts, nama: d.nama_bts, operator: d.operator, jaringan: d.jaringan, kab_kota: d.kab_kota, tahun: d.tahun }
-    }))
-  };
-  const blob = new Blob([JSON.stringify(gj, null, 2)], { type: 'application/geo+json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'bts_riau.geojson';
-  a.click();
-  showNtf('✓ bts_riau.geojson berhasil didownload');
-}
-
-
-// ============================================================
 // #INIT — Inisialisasi awal saat halaman selesai dimuat
 // ============================================================
 
@@ -619,3 +670,81 @@ window.addEventListener('load', async () => {
     if (s) enterMap(s); else showPage('pg-home');
   }, 1800);
 });
+
+// #EXPORT — Buka sidebar export
+function openExportTab(){
+
+  // reset active tab
+  document.querySelectorAll('.stab')
+    .forEach(el => el.classList.remove('active'));
+
+  // aktifkan tombol export
+  document.querySelector('.stab[data-tab="export"]')
+    .classList.add('active');
+
+  // reset panel
+  document.querySelectorAll('.tpanel')
+    .forEach(el => el.classList.remove('active'));
+
+  // tampilkan panel export
+  document.getElementById('tp-export')
+    .classList.add('active');
+
+}
+
+// #EXPORT — Download CSV
+function downloadCSV(){
+
+  const data = getFiltered();
+
+  let csv =
+`id_bts,nama_bts,operator,jaringan,kab_kota,latitude,longitude\n`;
+
+  data.forEach(d => {
+
+    csv +=
+`${d.id_bts},${d.nama_bts},${d.operator},${d.jaringan},${d.kab_kota},${d.latitude},${d.longitude}\n`;
+
+  });
+
+  const blob = new Blob([csv], {
+    type:'text/csv'
+  });
+
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+
+  a.href = url;
+  a.download = 'data_bts_riau.csv';
+
+  a.click();
+
+}
+
+
+// #EXPORT — Download JSON
+function downloadJSON(){
+
+  const data = getFiltered();
+
+  const blob = new Blob(
+
+    [JSON.stringify(data, null, 2)],
+
+    {
+      type:'application/json'
+    }
+
+  );
+
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+
+  a.href = url;
+  a.download = 'data_bts_riau.json';
+
+  a.click();
+
+}

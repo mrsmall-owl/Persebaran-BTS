@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>WebGIS BTS Riau — Sistem Informasi Persebaran BTS</title>
+<title>Smart Telecom GIS — Sistem Informasi Persebaran BTS</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css"/>
@@ -154,10 +154,28 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 .tpanel::-webkit-scrollbar-thumb{background:rgba(0,229,255,.25);border-radius:2px}
 .fsec{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.06)}
 .flbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin-bottom:7px}
-.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chips{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+#f-kab{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+#f-kab .chip{
+  width:100%;
+  justify-content:flex-start;
+}
 .chip{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1.5px solid rgba(255,255,255,.15);background:transparent;color:rgba(255,255,255,.6);cursor:pointer;transition:all .18s;font-family:'DM Sans',sans-serif}
 .chip:hover{border-color:var(--accent);color:var(--accent)}
-.chip.active{background:var(--accent);border-color:var(--accent);color:var(--navy)}
+.chip.active{
+  background: transparent;
+  border: 1.5px solid #00E5FF;
+  color: #00E5FF;
+  box-shadow: 0 0 10px rgba(0,229,255,.25);
+}
 .chip.op-ts.active{background:#FF0000;border-color:#FF0000;color:#fff}
 .chip.op-is.active{background:#FFB300;border-color:#FFB300;color:#fff}
 .chip.op-xl.active{background:#1565C0;border-color:#1565C0;color:#fff}
@@ -188,6 +206,128 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 .sbw{flex:2;height:5px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden}
 .sb{height:100%;border-radius:3px;transition:width .5s ease}
 .srv{font-size:10px;font-weight:700;min-width:24px;text-align:right}
+.fdesc{
+  font-size: 11px;
+  color: rgba(255,255,255,.5);
+  line-height: 1.5;
+  margin-top: 4px;
+}
+
+.exbox{
+  margin-top: 10px;
+
+  border: 1px solid rgba(0,255,255,.12);
+
+  border-radius: 14px;
+
+  overflow: hidden;
+}
+
+.exrow{
+  display: flex;
+
+  justify-content: space-between;
+
+  padding: 10px 12px;
+
+  font-size: 12px;
+
+  border-bottom:
+    1px solid rgba(255,255,255,.05);
+}
+
+.exrow:last-child{
+  border-bottom: none;
+}
+
+.exrow span{
+  color: rgba(255,255,255,.55);
+}
+
+.exrow b{
+  color: #7ffcff;
+}
+
+.fexpbtn{
+  width: 100%;
+
+  margin-top: 10px;
+
+  padding: 12px;
+
+  border: none;
+
+  border-radius: 12px;
+
+  background: rgba(0,255,255,.12);
+
+  color: #7ffcff;
+
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition: .25s;
+}
+
+.fexpbtn:hover{
+  background: rgba(0,255,255,.22);
+
+  box-shadow:
+    0 0 14px rgba(0,255,255,.2);
+}
+
+.finfo{
+  font-size: 11px;
+
+  line-height: 1.6;
+
+  color: rgba(255,255,255,.45);
+}
+.fexp{
+  width: calc(100% - 24px);
+  margin: 14px 12px 16px;
+
+  padding: 12px;
+
+  border-radius: 14px;
+
+  border: 1px solid rgba(0,255,255,.25);
+
+  background: rgba(0,255,255,.06);
+
+  color: #7ffcff;
+
+  font-weight: 700;
+  font-size: 13px;
+
+  cursor: pointer;
+
+  transition: .25s;
+}
+
+.fexp:hover{
+  background: rgba(0,255,255,.15);
+
+  box-shadow:
+    0 0 12px rgba(0,255,255,.25);
+}
+
+/* #STATISTIK — Judul grafik */
+
+.chart-title{
+
+  font-family: 'Orbitron', sans-serif;
+
+  color: #ffffff;
+
+  font-size: 15px;
+
+  font-weight: 700;
+
+  margin-bottom: 10px;
+
+}
 
 #leafmap{flex:1;z-index:1}
 .leaflet-popup-content-wrapper{background:var(--navy)!important;border:1px solid rgba(0,229,255,.3)!important;border-radius:12px!important;box-shadow:0 8px 32px rgba(0,0,0,.5)!important;color:var(--white)!important}
@@ -288,7 +428,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 <!-- LOADING -->
 <div class="page active" id="pg-loading">
   <div class="ld-logo">📡</div>
-  <div class="ld-text">MEMUAT WEBGIS BTS RIAU</div>
+  <div class="ld-text">MEMUAT...</div>
   <div class="ld-bar"><div class="ld-fill"></div></div>
 </div>
 
@@ -298,7 +438,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 <!-- LANDING -->
 <div class="page" id="pg-home" style="flex-direction:column;overflow-y:auto;overflow-x:hidden">
   <nav class="nav">
-    <div class="nav-brand"><span>🌐</span>WebGIS BTS Riau</div>
+    <div class="nav-brand"><span>🌐</span></div>
     <div class="nav-links">
       <button class="nav-link" onclick="smoothScroll('#fitur')">Fitur</button>
       <button class="nav-link" onclick="smoothScroll('#tim')">Tim</button>
@@ -312,9 +452,9 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 
   <div class="hero">
     <div class="hero-bg"><div class="hc hc1"></div><div class="hc hc2"></div><div class="hc hc3"></div></div>
-    <div class="hero-badge">📡Smart Telecom GIS</div>
+    <div class="hero-badge">Smart Telecom GIS</div>
     <h1 class="hero-title">Persebaran BTS Riau<br/>Berbasis WebGIS</h1>
-    <p class="hero-sub">Platform interaktif untuk visualisasi, analisis, dan pengelolaan data infrastruktur telekomunikasi Provinsi Riau secara real-time.</p>
+    <p class="hero-sub">Platform interaktif untuk visualisasi serta analisis data infrastruktur telekomunikasi Provinsi Riau secara real-time.</p>
     <div class="hero-btns">
       <button class="hbtn hbtn-p" onclick="showAuth('login')">Mulai Eksplorasi</button>
       <button class="hbtn hbtn-s" onclick="guestLogin()">Coba Tanpa Akun</button>
@@ -349,7 +489,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 
   <div class="section" id="tentang">
     <div class="sec-label">✦ Tentang Proyek</div>
-    <h2 class="sec-title">WebGIS BTS Riau</h2>
+    <h2 class="sec-title">WebGIS Persebaran BTS Riau</h2>
     <p style="font-size:16px;color:rgba(255,255,255,.55);line-height:1.8;max-width:700px">Sistem Informasi Persebaran Base Transceiver Station (BTS) Berbasis WebGIS dikembangkan untuk mendukung perencanaan infrastruktur telekomunikasi Provinsi Riau. Platform ini menyediakan data spasial BTS yang mudah diakses pemerintah, operator, dan masyarakat melalui browser tanpa instalasi software khusus.</p>
     <div style="margin-top:32px;display:flex;gap:12px;flex-wrap:wrap">
       <button class="hbtn hbtn-p" onclick="showAuth('register')">Daftar Sekarang →</button>
@@ -359,7 +499,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 
   <div class="footer">
     <div style="margin-bottom:8px;font-size:22px">🌐</div>
-    <div style="font-weight:600;color:rgba(255,255,255,.5);margin-bottom:4px">WebGIS BTS Riau</div>
+    <div style="font-weight:600;color:rgba(255,255,255,.5);margin-bottom:4px">Smart Telecom GIS</div>
     <div>Sistem Informasi Persebaran Base Transceiver Station</div>
     <div style="margin-top:12px;font-size:11px;color:rgba(255,255,255,.2)">Sumber data: KOMINFO/SIDIA · BPS Riau · OpenCelliD · OSM · Laporan Operator</div>
   </div>
@@ -369,7 +509,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 <div class="page" id="pg-auth">
   <div class="auth-bg"><div class="auth-blob ab1"></div><div class="auth-blob ab2"></div></div>
   <div class="auth-card">
-    <div class="auth-logo"><span class="auth-logo-ic">📡</span><span class="auth-logo-tx">WebGIS BTS Riau</span></div>
+    <div class="auth-logo"><span class="auth-logo-ic">📡</span><span class="auth-logo-tx">Smart Telecom GIS</span></div>
     <div class="auth-tabs">
       <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Masuk</button>
       <button class="auth-tab" id="tab-reg" onclick="switchAuthTab('register')">Daftar</button>
@@ -426,7 +566,6 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
       <div class="pp-nav-item" onclick="showPPSection('pp-wgs84')">Standarisasi WGS84</div>
       <div class="pp-nav-group">Analisis Awal</div>
       <div class="pp-nav-item" onclick="showPPSection('pp-blankspot')">Identifikasi Blank Spot</div>
-      <div class="pp-nav-item" onclick="showPPSection('pp-ringkasan')">Ringkasan Data</div>
     </div>
     <div id="pp-content">
 
@@ -599,41 +738,15 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
           <p style="font-size:13px;color:rgba(255,255,255,.55);line-height:1.7">Analisis blank spot lebih mendalam (kernel density, Thiessen polygon, buffer coverage) akan dilakukan pada <strong style="color:#FFB300">Minggu 4 — Analisis Spasial</strong> menggunakan data yang sudah dipreprocess pada minggu ini.</p>
         </div>
       </div>
-
-      <!-- 6. RINGKASAN -->
-      <div class="pp-section" id="pp-ringkasan">
-        <h2 style="font-size:20px;font-weight:700;margin-bottom:6px">📊 Ringkasan Preprocessing</h2>
-        <p style="font-size:14px;color:rgba(255,255,255,.45);margin-bottom:24px">Rekapitulasi seluruh proses preprocessing Minggu 3.</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
-          <div class="pp-card" style="text-align:center">
-            <div style="font-size:36px;font-weight:700;color:var(--accent);font-family:'Space Mono',monospace" id="sum-total">25</div>
-            <div style="font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px;margin-top:4px">Total Record</div>
-          </div>
-          <div class="pp-card" style="text-align:center">
-            <div style="font-size:36px;font-weight:700;color:var(--green);font-family:'Space Mono',monospace">100%</div>
-            <div style="font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px;margin-top:4px">Koordinat Valid</div>
-          </div>
-          <div class="pp-card" style="text-align:center">
-            <div style="font-size:36px;font-weight:700;color:var(--cyan);font-family:'Space Mono',monospace">WGS84</div>
-            <div style="font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px;margin-top:4px">Sistem Koordinat</div>
-          </div>
-          <div class="pp-card" style="text-align:center">
-            <div style="font-size:36px;font-weight:700;color:var(--purple);font-family:'Space Mono',monospace">GeoJSON</div>
-            <div style="font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px;margin-top:4px">Format Output</div>
-          </div>
-        </div>
-      </div>
-
     </div><!-- end pp-content -->
   </div><!-- end pp-body -->
 </div>
 <div class="page" id="pg-map">
   <header id="map-hdr">
-    <div class="mlogo"><span>🌐</span>WebGIS BTS Riau</div>
+    <div class="mlogo"><span>🌐</span>Smart Telecom GIS</div>
     <div class="msrch"><span class="sic">🔍</span><input type="text" id="srch" placeholder="Cari BTS atau wilayah..."/></div>
     <div class="mhsts">
-      <div class="mhs"><span class="mhs-n" id="hs-tot">25</span><span class="mhs-l">Total</span></div>
-      <div class="mhs"><span class="mhs-n" id="hs-sh">25</span><span class="mhs-l">Tampil</span></div>
+      <div class="mhs"><span class="mhs-n" id="hs-sh">1000</span><span class="mhs-l">BTS</span></div>
     </div>
     <div class="musr" id="usr-btn" onclick="toggleMenu()">
       <div class="musr-av" id="u-av" style="background:var(--accent)">G</div>
@@ -644,9 +757,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 
   <div id="umenu">
     <div class="um-hd"><div class="um-name" id="um-name">Guest</div><div class="um-email" id="um-email">Mode Demo</div></div>
-    <div class="um-item" onclick="toggleMenu()">🗺️ Peta BTS</div>
-    <div class="um-item" onclick="toggleMenu();showPage('pg-preprocess');initPP()">🔧 Preprocessing Data</div>
-    <div class="um-item um-out" onclick="doLogout()">🚪 Keluar</div>
+    <div class="um-item um-out" onclick="doLogout()">Keluar</div>
   </div>
 
   <div id="map-main">
@@ -655,6 +766,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
         <button class="stab active" data-tab="filter">⚙ Filter</button>
         <button class="stab" data-tab="list">Daftar BTS</button>
         <button class="stab" data-tab="stats">Statistik</button>
+        <button class="stab" data-tab="export">EXPORT</button>
       </div>
       <div class="tpanel active" id="tp-filter">
         <div class="fsec"><div class="flbl">Operator</div><div class="chips" id="f-op">
@@ -671,6 +783,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
         </div></div>
         <div class="fsec"><div class="flbl">Kab/Kota</div><div class="chips" id="f-kab"></div></div>
         <div style="padding:10px 14px"><button class="frst" id="btn-rst">↺ Reset Filter</button></div>
+        <button class="fexp" onclick="openExportTab()">Lanjut ke Export →</button>
       </div>
       <div class="tpanel" id="tp-list">
         <div class="bcount">Menampilkan <span id="lcount">25</span> BTS</div>
@@ -681,6 +794,76 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
         <div class="sblk"><div class="stitle">Per Operator</div><div id="st-op"></div></div>
         <div class="sblk"><div class="stitle">Per Jaringan</div><div id="st-net"></div></div>
         <div class="sblk"><div class="stitle">Per Kab/Kota</div><div id="st-kab"></div></div>
+        <!-- #STATISTIK — Grafik BTS per tahun -->
+        <div class="stcard">
+          <div class="sttl chart-title">Grafik BTS per Tahun</div>
+          <canvas id="yearChart"></canvas>
+        </div>
+      </div>
+      <div class="tpanel" id="tp-export">
+
+        <div class="fsec">
+
+          <div class="flbl">
+            EXPORT DATA BTS
+          </div>
+
+          <div class="fdesc">
+            Unduh data BTS berdasarkan filter aktif.
+          </div>
+
+        </div>
+
+        <div class="fsec">
+
+          <div class="flbl">
+            FILTER AKTIF
+          </div>
+
+          <div class="exbox">
+
+            <div class="exrow">
+              <span>Operator</span>
+              <b id="ex-op">Semua</b>
+            </div>
+
+            <div class="exrow">
+              <span>Jaringan</span>
+              <b id="ex-net">Semua</b>
+            </div>
+
+            <div class="exrow">
+              <span>Kab/Kota</span>
+              <b id="ex-kab">Semua</b>
+            </div>
+
+            <div class="exrow">
+              <span>Total Data</span>
+              <b id="ex-total">0 BTS</b>
+            </div>
+
+          </div>
+
+        </div>
+
+        <div class="fsec">
+
+          <div class="flbl">
+            FORMAT EXPORT
+          </div>
+
+          <button class="fexpbtn"
+                  onclick="downloadCSV()">
+            Download CSV
+          </button>
+
+          <button class="fexpbtn"
+                  onclick="downloadJSON()">
+            Download JSON
+          </button>
+
+        </div>
+
       </div>
     </div>
     <div id="leafmap"></div>
@@ -717,13 +900,15 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
     <span>📍 <span id="c-lat">—</span></span>
     <span><span id="c-lng">—</span></span>
     <span>🔍 Zoom: <span id="c-zm">8</span></span>
-    <span style="margin-left:auto;opacity:.6">WebGIS BTS Riau</span>
+    <span style="margin-left:auto;opacity:.6">Smart Telecom GIS</span>
   </div>
   <div id="notif"></div>
 </div>
 
+<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <!-- #SCRIPT JS UTAMA — Semua logika aplikasi dipindahkan ke file script.js -->
 <script src="script.js"></script>
 </body>
