@@ -9,7 +9,7 @@ async function loadBTSData() {
 
   try {
 
-    const response = await fetch('http://localhost:3000/bts');
+    const response = await fetch('https://persebaran-bts-production.up.railway.app/bts');
 
     BTS = await response.json();
 
