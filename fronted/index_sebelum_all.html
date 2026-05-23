@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>WebGIS BTS Riau — Sistem Informasi Persebaran BTS</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0B2341;--navy2:#0f2d52;--blue:#1565C0;--cyan:#0097A7;--teal:#00796B;
+  --accent:#00E5FF;--orange:#FF6D00;--green:#00C853;--purple:#7C4DFF;
+  --white:#fff;--lgray:#ECEFF1;--gray:#546E7A;--dark:#08111f;
+  --glass:rgba(11,35,65,0.9);--sidebar:300px;--header:56px;
+}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);color:var(--white);overflow:hidden}
+.page{position:fixed;inset:0;display:none;z-index:10}
+.page.active{display:flex}
+
+/* ── LOADING ── */
+#pg-loading{background:var(--dark);flex-direction:column;align-items:center;justify-content:center;gap:20px;z-index:9999}
+.ld-logo{font-size:56px;animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.88);opacity:.6}}
+.ld-text{font-family:'Space Mono',monospace;font-size:12px;color:var(--accent);letter-spacing:2px}
+.ld-bar{width:180px;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden}
+.ld-fill{height:100%;background:var(--accent);border-radius:2px;animation:ldanim 1.6s ease-in-out infinite}
+@keyframes ldanim{0%{width:0;margin-left:0}60%{width:75%;margin-left:0}100%{width:0;margin-left:100%}}
+
+/* ── LANDING ── */
+#pg-home{flex-direction:column;background:var(--dark);overflow-y:auto;overflow-x:hidden}
+.nav{height:64px;background:rgba(11,35,65,.95);backdrop-filter:blur(16px);border-bottom:1px solid rgba(0,229,255,.15);display:flex;align-items:center;padding:0 48px;gap:16px;position:sticky;top:0;z-index:100;flex-shrink:0}
+.nav-brand{display:flex;align-items:center;gap:10px;font-family:'Space Mono',monospace;font-size:14px;font-weight:700;color:var(--accent)}
+.nav-brand span{font-size:22px}
+.nav-links{display:flex;gap:4px;margin-left:auto}
+.nav-link{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;color:rgba(255,255,255,.6);cursor:pointer;transition:all .2s;border:none;background:none;font-family:'DM Sans',sans-serif}
+.nav-link:hover{color:var(--white);background:rgba(255,255,255,.07)}
+.nav-btn{padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;border:none}
+.btn-outline{background:transparent;border:1.5px solid rgba(0,229,255,.5);color:var(--accent)}
+.btn-outline:hover{background:rgba(0,229,255,.1)}
+.btn-solid{background:var(--accent);color:var(--navy)}
+.btn-solid:hover{background:#33eeff;transform:translateY(-1px)}
+
+.hero{min-height:calc(100vh - 64px);display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:80px 32px;position:relative;overflow:hidden}
+.hero-bg{position:absolute;inset:0;pointer-events:none}
+.hc{position:absolute;border-radius:50%;opacity:.08}
+.hc1{width:600px;height:600px;background:var(--cyan);top:-100px;left:-200px}
+.hc2{width:400px;height:400px;background:var(--blue);bottom:-100px;right:-100px}
+.hc3{width:300px;height:300px;background:var(--purple);top:40%;left:60%}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 16px;border-radius:24px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.08);font-size:12px;font-weight:600;color:var(--accent);letter-spacing:.5px;margin-bottom:24px}
+.hero-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent);animation:blink 1.5s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.hero-title{font-size:clamp(32px,5vw,62px);font-weight:700;line-height:1.1;margin-bottom:20px;background:linear-gradient(135deg,#fff 30%,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-sub{font-size:18px;color:rgba(255,255,255,.55);max-width:560px;line-height:1.7;margin-bottom:40px}
+.hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.hbtn{padding:14px 32px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;transition:all .25s;border:none;font-family:'DM Sans',sans-serif}
+.hbtn-p{background:var(--accent);color:var(--navy)}
+.hbtn-p:hover{background:#33eeff;transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,229,255,.3)}
+.hbtn-s{background:transparent;border:1.5px solid rgba(255,255,255,.2);color:var(--white)}
+.hbtn-s:hover{border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.07)}
+
+.stats-strip{display:flex;border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.03)}
+.stat-item{flex:1;padding:28px 16px;text-align:center;border-right:1px solid rgba(255,255,255,.06)}
+.stat-item:last-child{border-right:none}
+.stat-num{font-family:'Space Mono',monospace;font-size:32px;font-weight:700;color:var(--accent)}
+.stat-lbl{font-size:12px;color:rgba(255,255,255,.45);margin-top:4px;text-transform:uppercase;letter-spacing:.8px}
+
+.section{padding:80px 48px;max-width:1100px;margin:0 auto;width:100%}
+.sec-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent);margin-bottom:12px}
+.sec-title{font-size:clamp(24px,3vw,36px);font-weight:700;margin-bottom:16px}
+.sec-sub{font-size:16px;color:rgba(255,255,255,.5);max-width:500px;line-height:1.7;margin-bottom:48px}
+
+.feat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.feat-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:28px;transition:all .25s}
+.feat-card:hover{background:rgba(0,229,255,.06);border-color:rgba(0,229,255,.2);transform:translateY(-4px)}
+.feat-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:16px}
+.feat-title{font-size:16px;font-weight:600;margin-bottom:8px}
+.feat-desc{font-size:14px;color:rgba(255,255,255,.5);line-height:1.6}
+
+.team-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px}
+.team-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:24px 16px;text-align:center;transition:all .25s}
+.team-card:hover{border-color:rgba(0,229,255,.25);background:rgba(0,229,255,.04)}
+.team-av{width:56px;height:56px;border-radius:50%;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:var(--navy)}
+.team-name{font-size:14px;font-weight:600;margin-bottom:4px}
+.team-role{font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px}
+.team-comp{font-size:11px;color:var(--accent);margin-top:4px}
+
+.footer{background:rgba(0,0,0,.3);border-top:1px solid rgba(255,255,255,.06);padding:32px 48px;text-align:center;color:rgba(255,255,255,.3);font-size:13px}
+
+/* ── AUTH ── */
+#pg-auth{background:var(--dark);align-items:center;justify-content:center;flex-direction:column}
+.auth-bg{position:absolute;inset:0;pointer-events:none}
+.auth-blob{position:absolute;border-radius:50%;filter:blur(60px);opacity:.15}
+.ab1{width:400px;height:400px;background:var(--cyan);top:-100px;right:-100px}
+.ab2{width:300px;height:300px;background:var(--purple);bottom:-100px;left:-100px}
+.auth-card{background:rgba(11,35,65,.85);backdrop-filter:blur(20px);border:1px solid rgba(0,229,255,.2);border-radius:24px;padding:40px;width:100%;max-width:420px;position:relative;z-index:1;animation:fadeUp .35s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.auth-logo{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:28px}
+.auth-logo-ic{font-size:28px}
+.auth-logo-tx{font-family:'Space Mono',monospace;font-size:15px;font-weight:700;color:var(--accent)}
+.auth-tabs{display:flex;background:rgba(255,255,255,.06);border-radius:10px;padding:3px;margin-bottom:24px}
+.auth-tab{flex:1;padding:9px;border-radius:8px;font-size:13px;font-weight:600;text-align:center;cursor:pointer;transition:all .2s;color:rgba(255,255,255,.45);border:none;background:none;font-family:'DM Sans',sans-serif}
+.auth-tab.active{background:var(--accent);color:var(--navy)}
+.aform{display:flex;flex-direction:column;gap:13px}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fl{font-size:12px;font-weight:600;color:rgba(255,255,255,.55);letter-spacing:.3px}
+.fi{padding:11px 14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:10px;color:var(--white);font-size:14px;font-family:'DM Sans',sans-serif;outline:none;transition:border .2s}
+.fi:focus{border-color:var(--accent)}
+.fi::placeholder{color:rgba(255,255,255,.25)}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fsub{margin-top:4px;padding:13px;border-radius:10px;border:none;background:var(--accent);color:var(--navy);font-size:15px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;width:100%}
+.fsub:hover{background:#33eeff;transform:translateY(-1px)}
+.adiv{text-align:center;font-size:12px;color:rgba(255,255,255,.3);margin:10px 0;position:relative}
+.adiv::before,.adiv::after{content:'';position:absolute;top:50%;width:42%;height:1px;background:rgba(255,255,255,.1)}
+.adiv::before{left:0}.adiv::after{right:0}
+.ademo{padding:11px;border-radius:10px;border:1px solid rgba(0,229,255,.3);background:transparent;color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;width:100%;margin-top:4px}
+.ademo:hover{background:rgba(0,229,255,.1)}
+.aback{margin-top:20px;font-size:13px;color:rgba(255,255,255,.4);text-align:center;cursor:pointer}
+.aback:hover{color:var(--accent)}
+.aerr{background:rgba(255,100,100,.12);border:1px solid rgba(255,100,100,.3);border-radius:8px;padding:10px 14px;font-size:13px;color:#ff8080;display:none;margin-bottom:8px}
+.aok{background:rgba(0,200,83,.12);border:1px solid rgba(0,200,83,.3);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--green);display:none;margin-bottom:8px}
+
+/* ── MAP APP ── */
+#pg-map{flex-direction:column}
+#map-hdr{height:var(--header);background:var(--navy);border-bottom:1px solid rgba(0,229,255,.2);display:flex;align-items:center;padding:0 14px;gap:10px;z-index:1000;flex-shrink:0}
+.mlogo{display:flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:var(--accent);white-space:nowrap}
+.mlogo span{font-size:18px}
+.msrch{flex:1;max-width:300px;margin-left:auto;position:relative}
+.msrch input{width:100%;padding:7px 14px 7px 32px;background:rgba(255,255,255,.07);border:1px solid rgba(0,229,255,.2);border-radius:8px;color:var(--white);font-size:13px;font-family:'DM Sans',sans-serif;outline:none}
+.msrch input:focus{border-color:var(--accent)}
+.msrch input::placeholder{color:rgba(255,255,255,.3)}
+.sic{position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:12px;opacity:.5}
+.mhsts{display:flex;gap:5px;margin-left:10px}
+.mhs{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:4px 9px;text-align:center}
+.mhs-n{font-size:13px;font-weight:700;color:var(--accent);display:block;line-height:1.2}
+.mhs-l{font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px}
+.musr{display:flex;align-items:center;gap:8px;margin-left:8px;padding:4px 12px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);cursor:pointer;transition:all .2s}
+.musr:hover{border-color:rgba(255,100,100,.4);background:rgba(255,100,100,.08)}
+.musr-n{font-size:12px;font-weight:600;color:rgba(255,255,255,.8)}
+.musr-av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--navy)}
+
+#map-main{display:flex;flex:1;overflow:hidden}
+#sidebar{width:var(--sidebar);background:var(--glass);backdrop-filter:blur(12px);border-right:1px solid rgba(0,229,255,.12);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;z-index:500}
+.stabs{display:flex;border-bottom:1px solid rgba(255,255,255,.08)}
+.stab{flex:1;padding:10px 0;background:none;border:none;color:rgba(255,255,255,.4);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;cursor:pointer;transition:all .2s;font-family:'DM Sans',sans-serif}
+.stab.active{color:var(--accent);border-bottom:2px solid var(--accent)}
+.stab:hover:not(.active){color:rgba(255,255,255,.7)}
+.tpanel{display:none;flex:1;overflow-y:auto;flex-direction:column}
+.tpanel.active{display:flex}
+.tpanel::-webkit-scrollbar{width:3px}
+.tpanel::-webkit-scrollbar-thumb{background:rgba(0,229,255,.25);border-radius:2px}
+.fsec{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.06)}
+.flbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin-bottom:7px}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1.5px solid rgba(255,255,255,.15);background:transparent;color:rgba(255,255,255,.6);cursor:pointer;transition:all .18s;font-family:'DM Sans',sans-serif}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+.chip.active{background:var(--accent);border-color:var(--accent);color:var(--navy)}
+.chip.op-ts.active{background:#FF0000;border-color:#FF0000;color:#fff}
+.chip.op-is.active{background:#FFB300;border-color:#FFB300;color:#fff}
+.chip.op-xl.active{background:#1565C0;border-color:#1565C0;color:#fff}
+.chip.op-tr.active{background:#7C4DFF;border-color:#7C4DFF;color:#fff}
+.chip.n2.active{background:#546E7A;border-color:#546E7A;color:#fff}
+.chip.n3.active{background:#00796B;border-color:#00796B;color:#fff}
+.chip.n4.active{background:#0097A7;border-color:#0097A7;color:#fff}
+.chip.n5.active{background:#00C853;border-color:#00C853;color:#fff}
+.frst{width:100%;margin-top:9px;padding:7px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:rgba(255,255,255,.45);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
+.frst:hover{background:rgba(255,0,0,.1);border-color:#f44;color:#f88}
+.bcount{padding:9px 14px 5px;font-size:11px;color:rgba(255,255,255,.35)}
+.bcount span{color:var(--accent);font-weight:700}
+.bitem{padding:9px 14px;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer;transition:background .15s;display:flex;align-items:flex-start;gap:9px}
+.bitem:hover{background:rgba(0,229,255,.06)}
+.bitem.sel{background:rgba(0,229,255,.1);border-left:3px solid var(--accent)}
+.bdot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.binfo{flex:1;min-width:0}
+.bname{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bmeta{font-size:10px;color:rgba(255,255,255,.4);margin-top:1px}
+.bbdg{font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px;color:#fff;flex-shrink:0}
+.sblk{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.06)}
+.stitle{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin-bottom:9px}
+.big-s{text-align:center;padding:8px 0}
+.big-n{font-size:34px;font-weight:700;color:var(--accent);font-family:'Space Mono',monospace;line-height:1}
+.big-l{font-size:10px;color:rgba(255,255,255,.4);margin-top:3px}
+.srow{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.srl{font-size:10px;color:rgba(255,255,255,.55);flex:1}
+.sbw{flex:2;height:5px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden}
+.sb{height:100%;border-radius:3px;transition:width .5s ease}
+.srv{font-size:10px;font-weight:700;min-width:24px;text-align:right}
+
+#leafmap{flex:1;z-index:1}
+.leaflet-popup-content-wrapper{background:var(--navy)!important;border:1px solid rgba(0,229,255,.3)!important;border-radius:12px!important;box-shadow:0 8px 32px rgba(0,0,0,.5)!important;color:var(--white)!important}
+.leaflet-popup-tip{background:var(--navy)!important}
+.leaflet-popup-close-button{color:rgba(255,255,255,.5)!important;font-size:18px!important}
+.leaflet-control-zoom a{background:var(--navy)!important;color:var(--white)!important;border-color:rgba(255,255,255,.1)!important}
+.leaflet-control-zoom a:hover{background:var(--blue)!important}
+.leaflet-control-attribution{display:none}
+.pu{min-width:210px}
+.pu-hd{display:flex;align-items:center;gap:9px;padding-bottom:9px;margin-bottom:9px;border-bottom:1px solid rgba(255,255,255,.1)}
+.pu-ic{font-size:22px}
+.pu-name{font-size:13px;font-weight:700}
+.pu-op{font-size:10px;margin-top:2px}
+.pu-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.pu-f{background:rgba(255,255,255,.06);border-radius:6px;padding:5px 7px}
+.pu-fl{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:rgba(255,255,255,.4)}
+.pu-fv{font-size:12px;font-weight:600;margin-top:1px}
+.pu-st{display:inline-block;margin-top:7px;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;background:rgba(0,200,83,.15);color:var(--green);border:1px solid var(--green)}
+
+#lc{position:absolute;top:calc(var(--header) + 12px);right:12px;z-index:800;background:var(--glass);backdrop-filter:blur(12px);border:1px solid rgba(0,229,255,.15);border-radius:12px;padding:11px;min-width:148px}
+.lc-t{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin-bottom:7px}
+.lci{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.lci label{font-size:12px;color:rgba(255,255,255,.65);cursor:pointer}
+.lci input{accent-color:var(--accent);cursor:pointer}
+
+#lgnd{position:absolute;bottom:34px;right:12px;z-index:800;background:var(--glass);backdrop-filter:blur(12px);border:1px solid rgba(0,229,255,.15);border-radius:12px;padding:10px 13px}
+.lg-t{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin-bottom:7px}
+.lg-i{display:flex;align-items:center;gap:7px;margin-bottom:4px;font-size:11px;color:rgba(255,255,255,.65)}
+.lg-d{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+
+#ibar{position:absolute;bottom:0;left:var(--sidebar);right:0;height:26px;z-index:700;background:rgba(11,35,65,.9);backdrop-filter:blur(8px);border-top:1px solid rgba(0,229,255,.1);display:flex;align-items:center;gap:14px;padding:0 12px;font-size:10px;color:rgba(255,255,255,.35)}
+#ibar span{display:flex;align-items:center;gap:3px}
+
+#notif{position:absolute;top:calc(var(--header) + 12px);left:50%;transform:translateX(-50%);z-index:900;background:var(--navy);border:1px solid var(--accent);border-radius:8px;padding:7px 16px;font-size:12px;color:var(--accent);display:none;white-space:nowrap}
+
+#umenu{position:absolute;top:calc(var(--header) + 8px);right:14px;z-index:900;background:var(--navy2);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:8px;min-width:180px;display:none}
+.um-hd{padding:8px 10px 12px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:6px}
+.um-name{font-size:13px;font-weight:600}
+.um-email{font-size:11px;color:rgba(255,255,255,.4);margin-top:2px}
+.um-item{padding:8px 10px;border-radius:8px;font-size:13px;color:rgba(255,255,255,.7);cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:8px}
+.um-item:hover{background:rgba(255,255,255,.07)}
+.um-out{color:#ff8080}.um-out:hover{background:rgba(255,80,80,.1)}
+
+/* ── PREPROCESSING PANEL ── */
+#pg-preprocess{background:var(--dark);flex-direction:column;overflow:hidden}
+#pp-hdr{height:var(--header);background:var(--navy);border-bottom:1px solid rgba(0,229,255,.2);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0}
+#pp-hdr .pp-title{font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:var(--accent)}
+#pp-body{display:flex;flex:1;overflow:hidden}
+#pp-sidebar{width:260px;background:var(--glass);border-right:1px solid rgba(0,229,255,.12);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+.pp-nav-item{padding:11px 18px;font-size:13px;font-weight:500;color:rgba(255,255,255,.55);cursor:pointer;border-left:3px solid transparent;transition:all .2s;display:flex;align-items:center;gap:9px}
+.pp-nav-item:hover{color:var(--white);background:rgba(255,255,255,.04)}
+.pp-nav-item.active{color:var(--accent);border-left-color:var(--accent);background:rgba(0,229,255,.06)}
+.pp-nav-group{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,.25);padding:14px 18px 5px}
+#pp-content{flex:1;overflow-y:auto;padding:28px 32px}
+#pp-content::-webkit-scrollbar{width:4px}
+#pp-content::-webkit-scrollbar-thumb{background:rgba(0,229,255,.2);border-radius:2px}
+.pp-section{display:none}.pp-section.active{display:block}
+.pp-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:22px;margin-bottom:18px}
+.pp-card-title{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.pp-badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.pp-badge.ok{background:rgba(0,200,83,.12);color:var(--green);border:1px solid rgba(0,200,83,.3)}
+.pp-badge.warn{background:rgba(255,183,0,.12);color:#FFB300;border:1px solid rgba(255,183,0,.3)}
+.pp-badge.err{background:rgba(255,80,80,.12);color:#ff8080;border:1px solid rgba(255,80,80,.3)}
+.pp-table{width:100%;border-collapse:collapse;font-size:12px}
+.pp-table th{text-align:left;padding:7px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:rgba(255,255,255,.35);border-bottom:1px solid rgba(255,255,255,.08)}
+.pp-table td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.05);color:rgba(255,255,255,.8);vertical-align:top}
+.pp-table tr:hover td{background:rgba(255,255,255,.03)}
+.coord-val{font-family:'Space Mono',monospace;font-size:11px;color:var(--cyan)}
+.pp-step{display:flex;gap:14px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,.06)}
+.pp-step:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.pp-step-num{width:28px;height:28px;border-radius:50%;background:rgba(0,229,255,.15);border:1px solid rgba(0,229,255,.3);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--accent);flex-shrink:0}
+.pp-step-body{flex:1}
+.pp-step-title{font-size:13px;font-weight:600;margin-bottom:4px}
+.pp-step-desc{font-size:12px;color:rgba(255,255,255,.5);line-height:1.6}
+.pp-progress{height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;margin-top:8px}
+.pp-progress-fill{height:100%;border-radius:3px;transition:width 1s ease}
+.pp-stat-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.pp-stat-row:last-child{border-bottom:none}
+.pp-stat-key{font-size:12px;color:rgba(255,255,255,.5)}
+.pp-stat-val{font-size:13px;font-weight:700;color:var(--white)}
+.pp-code{background:rgba(0,0,0,.3);border:1px solid rgba(0,229,255,.1);border-radius:8px;padding:12px 14px;font-family:'Space Mono',monospace;font-size:11px;color:rgba(0,229,255,.85);line-height:1.7;overflow-x:auto;white-space:pre}
+.pp-dl-btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.3);border-radius:8px;color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;font-family:'DM Sans',sans-serif}
+.pp-dl-btn:hover{background:rgba(0,229,255,.18);transform:translateY(-1px)}
+.wgs-box{background:rgba(0,151,167,.08);border:1px solid rgba(0,151,167,.25);border-radius:10px;padding:14px;margin-bottom:12px}
+.wgs-label{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:rgba(0,229,255,.6);margin-bottom:6px}
+.wgs-val{font-family:'Space Mono',monospace;font-size:13px;color:var(--white)}
+.blank-spot-item{display:flex;align-items:center;gap:10px;padding:9px 12px;background:rgba(255,80,80,.06);border:1px solid rgba(255,80,80,.15);border-radius:8px;margin-bottom:8px}
+.blank-dot{width:8px;height:8px;border-radius:50%;background:#ff8080;flex-shrink:0;animation:blink 1.8s ease-in-out infinite}
+.blank-area{font-size:12px;font-weight:600;flex:1}
+.blank-meta{font-size:11px;color:rgba(255,255,255,.4)}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="page active" id="pg-loading">
+  <div class="ld-logo">📡</div>
+  <div class="ld-text">MEMUAT WEBGIS BTS RIAU</div>
+  <div class="ld-bar"><div class="ld-fill"></div></div>
+</div>
+
+<!-- LANDING -->
+<div class="page" id="pg-home" style="flex-direction:column;overflow-y:auto;overflow-x:hidden">
+  <nav class="nav">
+    <div class="nav-brand"><span>🌐</span>WebGIS BTS Riau</div>
+    <div class="nav-links">
+      <button class="nav-link" onclick="smoothScroll('#fitur')">Fitur</button>
+      <button class="nav-link" onclick="smoothScroll('#tim')">Tim</button>
+      <button class="nav-link" onclick="smoothScroll('#sumber-data')">Sumber Data</button>
+      <button class="nav-link" onclick="smoothScroll('#tentang')">Tentang</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-left:16px">
+      <button class="nav-btn btn-outline" onclick="showAuth('login')">Masuk</button>
+      <button class="nav-btn btn-solid" onclick="showAuth('register')">Daftar</button>
+    </div>
+  </nav>
+
+  <div class="hero">
+    <div class="hero-bg"><div class="hc hc1"></div><div class="hc hc2"></div><div class="hc hc3"></div></div>
+    <div class="hero-badge">📡 Sistem Informasi Geospasial</div>
+    <h1 class="hero-title">Persebaran BTS Riau<br/>Berbasis WebGIS</h1>
+    <p class="hero-sub">Platform interaktif untuk visualisasi, analisis, dan pengelolaan data infrastruktur telekomunikasi Provinsi Riau secara real-time.</p>
+    <div class="hero-btns">
+      <button class="hbtn hbtn-p" onclick="showAuth('login')">🗺️ Mulai Eksplorasi</button>
+      <button class="hbtn hbtn-s" onclick="guestLogin()">Coba Tanpa Akun</button>
+    </div>
+  </div>
+
+  <div class="stats-strip">
+    <div class="stat-item"><div class="stat-num">5.248+</div><div class="stat-lbl">Total BTS</div></div>
+    <div class="stat-item"><div class="stat-num">12</div><div class="stat-lbl">Kab / Kota</div></div>
+    <div class="stat-item"><div class="stat-num">4</div><div class="stat-lbl">Operator</div></div>
+    <div class="stat-item"><div class="stat-num">4G</div><div class="stat-lbl">Dominan</div></div>
+    <div class="stat-item"><div class="stat-num">87K km²</div><div class="stat-lbl">Luas Wilayah</div></div>
+  </div>
+
+  <div class="section" id="fitur">
+    <div class="sec-label">✦ Fitur Unggulan</div>
+    <h2 class="sec-title">Semua yang kamu butuhkan</h2>
+    <p class="sec-sub">Dari visualisasi peta hingga analisis spasial, semua tersedia dalam satu platform.</p>
+    <div class="feat-grid">
+      <div class="feat-card"><div class="feat-icon" style="background:rgba(0,151,167,.15)">🗺️</div><div class="feat-title">Peta Interaktif</div><div class="feat-desc">Visualisasi BTS seluruh Riau dengan 3 pilihan basemap — OpenStreetMap, Satelit, dan Dark Mode.</div></div>
+      <div class="feat-card"><div class="feat-icon" style="background:rgba(0,229,255,.12)">🔍</div><div class="feat-title">Filter & Pencarian</div><div class="feat-desc">Filter by operator (Telkomsel, Indosat, XL, Tri), tipe jaringan (2G/3G/4G/5G), dan wilayah administratif.</div></div>
+      <div class="feat-card"><div class="feat-icon" style="background:rgba(124,77,255,.15)">📊</div><div class="feat-title">Dashboard Statistik</div><div class="feat-desc">Grafik distribusi BTS per operator, per kabupaten/kota, dan perkembangan jaringan.</div></div>
+      <div class="feat-card"><div class="feat-icon" style="background:rgba(0,200,83,.12)">🌡️</div><div class="feat-title">Heatmap Kepadatan</div><div class="feat-desc">Identifikasi wilayah padat sinyal dan blank spot area secara visual.</div></div>
+      <div class="feat-card"><div class="feat-icon" style="background:rgba(255,109,0,.12)">📋</div><div class="feat-title">Detail BTS Lengkap</div><div class="feat-desc">Info tiap tower: operator, jaringan, ketinggian, kecamatan, dan tahun operasi.</div></div>
+      <div class="feat-card"><div class="feat-icon" style="background:rgba(21,101,192,.15)">🔗</div><div class="feat-title">Clustering Otomatis</div><div class="feat-desc">Pengelompokan marker BTS otomatis saat zoom out untuk tampilan lebih bersih.</div></div>
+    </div>
+  </div>
+
+  <div style="background:rgba(255,255,255,.02);border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06)">
+    <div class="section" id="tim">
+      <div class="sec-label">✦ Tim Pengembang</div>
+      <h2 class="sec-title">Kelompok WebGIS</h2>
+      <p class="sec-sub">Semester Genap 2024/2025</p>
+      <div class="team-grid">
+        <div class="team-card"><div class="team-av" style="background:var(--accent)">TO</div><div class="team-name">Tota</div><div class="team-role">Project Manager</div><div class="team-comp">Manajemen Tim</div></div>
+        <div class="team-card"><div class="team-av" style="background:#B39DDB">DI</div><div class="team-name">Dirra</div><div class="team-role">UI/UX Designer</div><div class="team-comp">Perencanaan Interface</div></div>
+        <div class="team-card"><div class="team-av" style="background:#80CBC4">SH</div><div class="team-name">Shalna</div><div class="team-role">GIS Analyst</div><div class="team-comp">Perencanaan Interface</div></div>
+        <div class="team-card"><div class="team-av" style="background:#FFCC80">IB</div><div class="team-name">Ibas</div><div class="team-role">Database Engineer</div><div class="team-comp">Perancangan Database</div></div>
+        <div class="team-card"><div class="team-av" style="background:#A5D6A7">SA</div><div class="team-name">Satrio</div><div class="team-role">Backend Developer</div><div class="team-comp">Perancangan Database</div></div>
+        <div class="team-card"><div class="team-av" style="background:#90CAF9">MU</div><div class="team-name">Mustopa</div><div class="team-role">Frontend Developer</div><div class="team-comp">Fungsional & Timeline</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="tentang">
+    <div class="sec-label">✦ Tentang Proyek</div>
+    <h2 class="sec-title">WebGIS BTS Riau</h2>
+    <p style="font-size:16px;color:rgba(255,255,255,.55);line-height:1.8;max-width:700px">Sistem Informasi Persebaran Base Transceiver Station (BTS) Berbasis WebGIS dikembangkan untuk mendukung perencanaan infrastruktur telekomunikasi Provinsi Riau. Platform ini menyediakan data spasial BTS yang mudah diakses pemerintah, operator, dan masyarakat melalui browser tanpa instalasi software khusus.</p>
+    <div style="margin-top:32px;display:flex;gap:12px;flex-wrap:wrap">
+      <button class="hbtn hbtn-p" onclick="showAuth('register')">Daftar Sekarang →</button>
+      <button class="hbtn hbtn-s" onclick="guestLogin()">Coba Tanpa Akun</button>
+    </div>
+  </div>
+
+  <div class="section" id="sumber-data" style="border-top:1px solid rgba(255,255,255,.06)">
+    <div class="sec-label">✦ Sumber Data — Minggu 2</div>
+    <h2 class="sec-title">Data yang Digunakan</h2>
+    <p class="sec-sub">Data dikumpulkan dari berbagai sumber resmi dan terbuka untuk memastikan akurasi dan kelengkapan peta BTS Provinsi Riau.</p>
+    <div class="feat-grid">
+      <div class="feat-card">
+        <div class="feat-icon" style="background:rgba(0,151,167,.15);font-size:20px">🏛️</div>
+        <div class="feat-title">KOMINFO / SIDIA</div>
+        <div class="feat-desc">Sistem Informasi Data Infrastruktur dan Aplikasi — data resmi BTS terdaftar di Provinsi Riau. Sumber utama lokasi dan operator.</div>
+        <div style="margin-top:10px;font-size:11px;color:rgba(0,229,255,.7);font-family:'Space Mono',monospace">sidia.kominfo.go.id</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon" style="background:rgba(0,200,83,.12);font-size:20px">📊</div>
+        <div class="feat-title">BPS Provinsi Riau</div>
+        <div class="feat-desc">Badan Pusat Statistik — data administrasi wilayah, luas kecamatan, dan jumlah penduduk per kab/kota sebagai konteks analisis.</div>
+        <div style="margin-top:10px;font-size:11px;color:rgba(0,229,255,.7);font-family:'Space Mono',monospace">riau.bps.go.id</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon" style="background:rgba(124,77,255,.15);font-size:20px">📡</div>
+        <div class="feat-title">OpenCelliD</div>
+        <div class="feat-desc">Database sel tower terbuka berbasis crowdsourcing global — digunakan sebagai data pembanding koordinat BTS dan validasi silang.</div>
+        <div style="margin-top:10px;font-size:11px;color:rgba(0,229,255,.7);font-family:'Space Mono',monospace">opencellid.org</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon" style="background:rgba(21,101,192,.15);font-size:20px">🗺️</div>
+        <div class="feat-title">OpenStreetMap / GADM</div>
+        <div class="feat-desc">Batas administrasi wilayah (peta kabupaten/kota) dan basemap OpenStreetMap untuk konteks geografis visualisasi peta.</div>
+        <div style="margin-top:10px;font-size:11px;color:rgba(0,229,255,.7);font-family:'Space Mono',monospace">gadm.org · openstreetmap.org</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon" style="background:rgba(255,183,0,.12);font-size:20px">🛰️</div>
+        <div class="feat-title">SRTM / DEM Riau</div>
+        <div class="feat-desc">Shuttle Radar Topography Mission — data elevasi digital (DEM) Provinsi Riau untuk analisis ketinggian dan topografi wilayah.</div>
+        <div style="margin-top:10px;font-size:11px;color:rgba(0,229,255,.7);font-family:'Space Mono',monospace">USGS EarthExplorer</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon" style="background:rgba(255,80,80,.1);font-size:20px">📱</div>
+        <div class="feat-title">Data Operator Langsung</div>
+        <div class="feat-desc">Data site BTS dari laporan publik dan portal masing-masing operator: Telkomsel, Indosat Ooredoo, XL Axiata, dan Tri Indonesia.</div>
+        <div style="margin-top:10px;font-size:11px;color:rgba(0,229,255,.7);font-family:'Space Mono',monospace">Annual Report 2022–2023</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div style="margin-bottom:8px;font-size:22px">🌐</div>
+    <div style="font-weight:600;color:rgba(255,255,255,.5);margin-bottom:4px">WebGIS BTS Riau</div>
+    <div>Sistem Informasi Persebaran Base Transceiver Station · Semester Genap 2024/2025</div>
+    <div style="margin-top:8px">Tim: Tota · Dirra · Shalna · Ibas · Satrio · Mustopa</div>
+    <div style="margin-top:12px;font-size:11px;color:rgba(255,255,255,.2)">Sumber data: KOMINFO/SIDIA · BPS Riau · OpenCelliD · OSM · SRTM/DEM · Laporan Operator</div>
+  </div>
+</div>
+
+<!-- AUTH -->
+<div class="page" id="pg-auth">
+  <div class="auth-bg"><div class="auth-blob ab1"></div><div class="auth-blob ab2"></div></div>
+  <div class="auth-card">
+    <div class="auth-logo"><span class="auth-logo-ic">📡</span><span class="auth-logo-tx">WebGIS BTS Riau</span></div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Masuk</button>
+      <button class="auth-tab" id="tab-reg" onclick="switchAuthTab('register')">Daftar</button>
+    </div>
+    <div class="aerr" id="aerr"></div>
+    <div class="aok" id="aok"></div>
+
+    <!-- LOGIN -->
+    <div id="form-login">
+      <div class="aform">
+        <div class="fg"><label class="fl">Email</label><input class="fi" type="email" id="l-em" placeholder="nama@email.com"/></div>
+        <div class="fg"><label class="fl">Password</label><input class="fi" type="password" id="l-pw" placeholder="Password kamu"/></div>
+        <button class="fsub" onclick="doLogin()">Masuk ke Peta →</button>
+      </div>
+      <div class="adiv" style="margin-top:16px">atau</div>
+      <button class="ademo" onclick="guestLogin()">🗺️ Coba Tanpa Akun (Demo)</button>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="form-reg" style="display:none">
+      <div class="aform">
+        <div class="frow">
+          <div class="fg"><label class="fl">Nama Depan</label><input class="fi" type="text" id="r-fn" placeholder="Budi"/></div>
+          <div class="fg"><label class="fl">Nama Belakang</label><input class="fi" type="text" id="r-ln" placeholder="Santoso"/></div>
+        </div>
+        <div class="fg"><label class="fl">Email</label><input class="fi" type="email" id="r-em" placeholder="nama@email.com"/></div>
+        <div class="fg"><label class="fl">Institusi</label><input class="fi" type="text" id="r-in" placeholder="Universitas Riau"/></div>
+        <div class="fg"><label class="fl">Password</label><input class="fi" type="password" id="r-pw" placeholder="Min. 6 karakter"/></div>
+        <div class="fg"><label class="fl">Konfirmasi Password</label><input class="fi" type="password" id="r-pw2" placeholder="Ulangi password"/></div>
+        <button class="fsub" onclick="doRegister()">Buat Akun →</button>
+      </div>
+    </div>
+    <div class="aback" onclick="showPage('pg-home')">← Kembali ke Beranda</div>
+  </div>
+</div>
+
+<!-- PREPROCESSING PAGE -->
+<div class="page" id="pg-preprocess">
+  <header id="pp-hdr">
+    <div class="pp-title">🔧 Preprocessing Data — Minggu 3</div>
+    <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+      <span class="pp-badge ok">✓ WGS84 Terstandarisasi</span>
+      <span class="pp-badge ok">✓ GeoJSON Siap</span>
+      <button class="pp-dl-btn" onclick="downloadGeoJSON()">⬇ Export GeoJSON</button>
+      <button onclick="showPage('pg-map')" style="padding:7px 16px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:rgba(255,255,255,.7);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif">← Kembali ke Peta</button>
+    </div>
+  </header>
+  <div id="pp-body">
+    <div id="pp-sidebar">
+      <div class="pp-nav-group">Preprocessing</div>
+      <div class="pp-nav-item active" onclick="showPPSection('pp-cleaning')">🧹 Cleaning Data</div>
+      <div class="pp-nav-item" onclick="showPPSection('pp-validasi')">📍 Validasi Koordinat</div>
+      <div class="pp-nav-item" onclick="showPPSection('pp-geojson')">🗂 Konversi GeoJSON</div>
+      <div class="pp-nav-item" onclick="showPPSection('pp-wgs84')">🌐 Standarisasi WGS84</div>
+      <div class="pp-nav-group">Analisis Awal</div>
+      <div class="pp-nav-item" onclick="showPPSection('pp-blankspot')">⚠ Identifikasi Blank Spot</div>
+      <div class="pp-nav-item" onclick="showPPSection('pp-ringkasan')">📊 Ringkasan Data</div>
+    </div>
+    <div id="pp-content">
+
+      <!-- 1. CLEANING DATA -->
+      <div class="pp-section active" id="pp-cleaning">
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:6px">🧹 Cleaning Data BTS</h2>
+        <p style="font-size:14px;color:rgba(255,255,255,.45);margin-bottom:24px">Proses pembersihan data mentah BTS sebelum digunakan untuk analisis spasial.</p>
+        <div class="pp-card">
+          <div class="pp-card-title">⚙ Langkah Cleaning</div>
+          <div class="pp-step">
+            <div class="pp-step-num">1</div>
+            <div class="pp-step-body">
+              <div class="pp-step-title">Hapus Duplikat</div>
+              <div class="pp-step-desc">Identifikasi dan hapus baris data BTS yang memiliki nama atau koordinat sama. Total duplikat ditemukan: <strong style="color:var(--accent)">0</strong> dari 25 record.</div>
+              <div class="pp-progress"><div class="pp-progress-fill" style="width:100%;background:var(--green)"></div></div>
+            </div>
+            <span class="pp-badge ok">✓ Selesai</span>
+          </div>
+          <div class="pp-step">
+            <div class="pp-step-num">2</div>
+            <div class="pp-step-body">
+              <div class="pp-step-title">Isi Nilai Kosong (Null/Missing)</div>
+              <div class="pp-step-desc">Field yang kosong diisi dengan nilai default: status → "Tidak Diketahui", ketinggian → rata-rata wilayah. Null ditemukan: <strong style="color:var(--accent)">0</strong>.</div>
+              <div class="pp-progress"><div class="pp-progress-fill" style="width:100%;background:var(--green)"></div></div>
+            </div>
+            <span class="pp-badge ok">✓ Selesai</span>
+          </div>
+          <div class="pp-step">
+            <div class="pp-step-num">3</div>
+            <div class="pp-step-body">
+              <div class="pp-step-title">Standarisasi Nama Operator</div>
+              <div class="pp-step-desc">Normalisasi variasi nama: "Telkomsel / TSEL / telkomsel" → "Telkomsel". Semua operator sudah seragam: Telkomsel, Indosat, XL Axiata, Tri.</div>
+              <div class="pp-progress"><div class="pp-progress-fill" style="width:100%;background:var(--green)"></div></div>
+            </div>
+            <span class="pp-badge ok">✓ Selesai</span>
+          </div>
+          <div class="pp-step">
+            <div class="pp-step-num">4</div>
+            <div class="pp-step-body">
+              <div class="pp-step-title">Validasi Tipe Data</div>
+              <div class="pp-step-desc">Pastikan lat/lng bertipe float, ketinggian integer, tahun integer (4 digit). Field teks sudah di-trim dari spasi berlebih.</div>
+              <div class="pp-progress"><div class="pp-progress-fill" style="width:100%;background:var(--green)"></div></div>
+            </div>
+            <span class="pp-badge ok">✓ Selesai</span>
+          </div>
+          <div class="pp-step">
+            <div class="pp-step-num">5</div>
+            <div class="pp-step-body">
+              <div class="pp-step-title">Normalisasi Tipe Jaringan</div>
+              <div class="pp-step-desc">Unifikasi label jaringan: "LTE" → "4G", "UMTS" → "3G", "GSM" → "2G", "NR" → "5G".</div>
+              <div class="pp-progress"><div class="pp-progress-fill" style="width:100%;background:var(--green)"></div></div>
+            </div>
+            <span class="pp-badge ok">✓ Selesai</span>
+          </div>
+        </div>
+        <div class="pp-card">
+          <div class="pp-card-title">📋 Sampel Data Hasil Cleaning</div>
+          <div style="overflow-x:auto">
+          <table class="pp-table">
+            <thead><tr><th>ID</th><th>Nama BTS</th><th>Operator</th><th>Jaringan</th><th>Kab/Kota</th><th>Status</th><th>Tahun</th></tr></thead>
+            <tbody id="cleaning-table"></tbody>
+          </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. VALIDASI KOORDINAT -->
+      <div class="pp-section" id="pp-validasi">
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:6px">📍 Validasi Koordinat</h2>
+        <p style="font-size:14px;color:rgba(255,255,255,.45);margin-bottom:24px">Verifikasi bahwa seluruh koordinat BTS berada dalam bounding box Provinsi Riau yang valid.</p>
+        <div class="pp-card">
+          <div class="pp-card-title">🔲 Bounding Box Provinsi Riau</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+            <div class="wgs-box"><div class="wgs-label">Latitude Min</div><div class="wgs-val">−0.9982° (Indragiri Hilir)</div></div>
+            <div class="wgs-box"><div class="wgs-label">Latitude Max</div><div class="wgs-val">2.9167° (Rokan Hilir)</div></div>
+            <div class="wgs-box"><div class="wgs-label">Longitude Min</div><div class="wgs-val">100.2167° (Rokan Hulu)</div></div>
+            <div class="wgs-box"><div class="wgs-label">Longitude Max</div><div class="wgs-val">102.7833° (Kepulauan Meranti)</div></div>
+          </div>
+        </div>
+        <div class="pp-card">
+          <div class="pp-card-title">✅ Hasil Validasi Per BTS</div>
+          <div style="overflow-x:auto">
+          <table class="pp-table">
+            <thead><tr><th>ID</th><th>Nama BTS</th><th>Latitude</th><th>Longitude</th><th>Kab/Kota</th><th>Status Validasi</th></tr></thead>
+            <tbody id="validasi-table"></tbody>
+          </table>
+          </div>
+        </div>
+        <div class="pp-card">
+          <div class="pp-card-title">📈 Ringkasan Validasi</div>
+          <div class="pp-stat-row"><span class="pp-stat-key">Total data diperiksa</span><span class="pp-stat-val" id="val-total">—</span></div>
+          <div class="pp-stat-row"><span class="pp-stat-key">Koordinat valid</span><span class="pp-stat-val" style="color:var(--green)" id="val-ok">—</span></div>
+          <div class="pp-stat-row"><span class="pp-stat-key">Di luar bounding box</span><span class="pp-stat-val" style="color:#ff8080" id="val-err">—</span></div>
+          <div class="pp-stat-row"><span class="pp-stat-key">Akurasi validasi</span><span class="pp-stat-val" style="color:var(--accent)" id="val-pct">—</span></div>
+        </div>
+      </div>
+
+      <!-- 3. KONVERSI GEOJSON -->
+      <div class="pp-section" id="pp-geojson">
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:6px">🗂 Konversi ke GeoJSON</h2>
+        <p style="font-size:14px;color:rgba(255,255,255,.45);margin-bottom:24px">Data BTS dikonversi ke format GeoJSON standar (RFC 7946) untuk integrasi GeoServer pada Minggu 5.</p>
+        <div class="pp-card">
+          <div class="pp-card-title">📄 Struktur GeoJSON</div>
+          <div class="pp-code" id="geojson-preview"></div>
+        </div>
+        <div class="pp-card">
+          <div class="pp-card-title">📊 Info File GeoJSON</div>
+          <div class="pp-stat-row"><span class="pp-stat-key">Format</span><span class="pp-stat-val">GeoJSON (RFC 7946)</span></div>
+          <div class="pp-stat-row"><span class="pp-stat-key">Tipe Geometri</span><span class="pp-stat-val">Point</span></div>
+          <div class="pp-stat-row"><span class="pp-stat-key">Sistem Koordinat</span><span class="pp-stat-val">WGS84 (EPSG:4326)</span></div>
+          <div class="pp-stat-row"><span class="pp-stat-key">Jumlah Feature</span><span class="pp-stat-val" id="gj-count">—</span></div>
+          <div class="pp-stat-row"><span class="pp-stat-key">Properties per Feature</span><span class="pp-stat-val">8 atribut</span></div>
+          <div style="margin-top:14px">
+            <button class="pp-dl-btn" onclick="downloadGeoJSON()">⬇ Download bts_riau.geojson</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. STANDARISASI WGS84 -->
+      <div class="pp-section" id="pp-wgs84">
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:6px">🌐 Standarisasi WGS84</h2>
+        <p style="font-size:14px;color:rgba(255,255,255,.45);margin-bottom:24px">Seluruh data koordinat telah distandarisasi ke sistem referensi geografis WGS84 (EPSG:4326).</p>
+        <div class="pp-card">
+          <div class="pp-card-title">ℹ Informasi Sistem Referensi</div>
+          <div class="pp-stat-row"><span class="pp-stat-key">Nama CRS</span><span class="pp-stat-val">World Geodetic System 1984</span></div>
+          <div class="pp-stat-row"><span class="pp-stat-key">Kode EPSG</span><span class="pp-stat-val">EPSG:4326</span></div>
+          <div class="pp-stat-row"><span class="pp-stat-key">Satuan Koordinat</span><span class="pp-stat-val">Derajat Desimal (°)</span></div>
+          <div class="pp-stat-row"><span class="pp-stat-key">Datum</span><span class="pp-stat-val">WGS84</span></div>
+          <div class="pp-stat-row"><span class="pp-stat-key">Kompatibilitas</span><span class="pp-stat-val">Leaflet, GeoServer, QGIS, Google Maps</span></div>
+        </div>
+        <div class="pp-card">
+          <div class="pp-card-title">📋 Sampel Koordinat WGS84</div>
+          <div style="overflow-x:auto">
+          <table class="pp-table">
+            <thead><tr><th>BTS</th><th>Kab/Kota</th><th>Latitude (°)</th><th>Longitude (°)</th><th>Format DMS</th></tr></thead>
+            <tbody id="wgs84-table"></tbody>
+          </table>
+          </div>
+        </div>
+        <div class="pp-card">
+          <div class="pp-card-title">🔢 Deklarasi CRS di GeoJSON</div>
+          <div class="pp-code">// GeoJSON RFC 7946 — CRS default WGS84
+{
+  "type": "FeatureCollection",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:OGC:1.3:CRS84"
+    }
+  },
+  "features": [ ... ]
+}</div>
+        </div>
+      </div>
+
+      <!-- 5. BLANK SPOT -->
+      <div class="pp-section" id="pp-blankspot">
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:6px">⚠ Identifikasi Blank Spot</h2>
+        <p style="font-size:14px;color:rgba(255,255,255,.45);margin-bottom:24px">Analisis awal wilayah yang kekurangan coverage BTS berdasarkan distribusi data saat ini.</p>
+        <div class="pp-card">
+          <div class="pp-card-title">🔴 Area Berpotensi Blank Spot</div>
+          <div id="blankspot-list"></div>
+        </div>
+        <div class="pp-card">
+          <div class="pp-card-title">📊 Distribusi BTS per Kab/Kota</div>
+          <div id="density-list"></div>
+        </div>
+        <div class="pp-card" style="background:rgba(255,183,0,.05);border-color:rgba(255,183,0,.2)">
+          <div class="pp-card-title" style="color:#FFB300">⚡ Catatan Analisis Lanjutan</div>
+          <p style="font-size:13px;color:rgba(255,255,255,.55);line-height:1.7">Analisis blank spot lebih mendalam (kernel density, Thiessen polygon, buffer coverage) akan dilakukan pada <strong style="color:#FFB300">Minggu 4 — Analisis Spasial</strong> menggunakan data yang sudah dipreprocess pada minggu ini.</p>
+        </div>
+      </div>
+
+      <!-- 6. RINGKASAN -->
+      <div class="pp-section" id="pp-ringkasan">
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:6px">📊 Ringkasan Preprocessing</h2>
+        <p style="font-size:14px;color:rgba(255,255,255,.45);margin-bottom:24px">Rekapitulasi seluruh proses preprocessing Minggu 3.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
+          <div class="pp-card" style="text-align:center">
+            <div style="font-size:36px;font-weight:700;color:var(--accent);font-family:'Space Mono',monospace" id="sum-total">25</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px;margin-top:4px">Total Record</div>
+          </div>
+          <div class="pp-card" style="text-align:center">
+            <div style="font-size:36px;font-weight:700;color:var(--green);font-family:'Space Mono',monospace">100%</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px;margin-top:4px">Koordinat Valid</div>
+          </div>
+          <div class="pp-card" style="text-align:center">
+            <div style="font-size:36px;font-weight:700;color:var(--cyan);font-family:'Space Mono',monospace">WGS84</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px;margin-top:4px">Sistem Koordinat</div>
+          </div>
+          <div class="pp-card" style="text-align:center">
+            <div style="font-size:36px;font-weight:700;color:var(--purple);font-family:'Space Mono',monospace">GeoJSON</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px;margin-top:4px">Format Output</div>
+          </div>
+        </div>
+        <div class="pp-card">
+          <div class="pp-card-title">✅ Checklist Minggu 3</div>
+          <div class="pp-stat-row"><span class="pp-stat-key">🧹 Cleaning data (duplikat, null, normalisasi)</span><span class="pp-badge ok">✓ Selesai</span></div>
+          <div class="pp-stat-row"><span class="pp-stat-key">📍 Validasi koordinat (bounding box Riau)</span><span class="pp-badge ok">✓ Selesai</span></div>
+          <div class="pp-stat-row"><span class="pp-stat-key">🗂 Konversi ke format GeoJSON</span><span class="pp-badge ok">✓ Selesai</span></div>
+          <div class="pp-stat-row"><span class="pp-stat-key">🌐 Standarisasi sistem referensi WGS84</span><span class="pp-badge ok">✓ Selesai</span></div>
+          <div class="pp-stat-row"><span class="pp-stat-key">⚠ Identifikasi awal blank spot area</span><span class="pp-badge ok">✓ Selesai</span></div>
+          <div class="pp-stat-row" style="border:none"><span class="pp-stat-key">📤 Data siap untuk Minggu 4 (Analisis Spasial)</span><span class="pp-badge ok">✓ Siap</span></div>
+        </div>
+      </div>
+
+    </div><!-- end pp-content -->
+  </div><!-- end pp-body -->
+</div>
+<div class="page" id="pg-map">
+  <header id="map-hdr">
+    <div class="mlogo"><span>🌐</span>WebGIS BTS Riau</div>
+    <div class="msrch"><span class="sic">🔍</span><input type="text" id="srch" placeholder="Cari BTS atau wilayah..."/></div>
+    <div class="mhsts">
+      <div class="mhs"><span class="mhs-n" id="hs-tot">25</span><span class="mhs-l">Total</span></div>
+      <div class="mhs"><span class="mhs-n" id="hs-sh">25</span><span class="mhs-l">Tampil</span></div>
+    </div>
+    <div class="musr" id="usr-btn" onclick="toggleMenu()">
+      <div class="musr-av" id="u-av" style="background:var(--accent)">G</div>
+      <span class="musr-n" id="u-nm">Guest</span>
+      <span style="font-size:10px;opacity:.5">▼</span>
+    </div>
+  </header>
+
+  <div id="umenu">
+    <div class="um-hd"><div class="um-name" id="um-name">Guest</div><div class="um-email" id="um-email">Mode Demo</div></div>
+    <div class="um-item" onclick="toggleMenu()">🗺️ Peta BTS</div>
+    <div class="um-item" onclick="toggleMenu();showPage('pg-preprocess');initPP()">🔧 Preprocessing Data</div>
+    <div class="um-item um-out" onclick="doLogout()">🚪 Keluar</div>
+  </div>
+
+  <div id="map-main">
+    <div id="sidebar">
+      <div class="stabs">
+        <button class="stab active" data-tab="filter">⚙ Filter</button>
+        <button class="stab" data-tab="list">📋 Daftar</button>
+        <button class="stab" data-tab="stats">📊 Statistik</button>
+      </div>
+      <div class="tpanel active" id="tp-filter">
+        <div class="fsec"><div class="flbl">📡 Operator</div><div class="chips" id="f-op">
+          <button class="chip op-ts active" data-op="Telkomsel">Telkomsel</button>
+          <button class="chip op-is active" data-op="Indosat">Indosat</button>
+          <button class="chip op-xl active" data-op="XL Axiata">XL Axiata</button>
+          <button class="chip op-tr active" data-op="Tri">Tri</button>
+        </div></div>
+        <div class="fsec"><div class="flbl">📶 Jaringan</div><div class="chips" id="f-net">
+          <button class="chip n2 active" data-net="2G">2G</button>
+          <button class="chip n3 active" data-net="3G">3G</button>
+          <button class="chip n4 active" data-net="4G">4G</button>
+          <button class="chip n5 active" data-net="5G">5G</button>
+        </div></div>
+        <div class="fsec"><div class="flbl">🏙️ Kab/Kota</div><div class="chips" id="f-kab"></div></div>
+        <div style="padding:10px 14px"><button class="frst" id="btn-rst">↺ Reset Filter</button></div>
+      </div>
+      <div class="tpanel" id="tp-list">
+        <div class="bcount">Menampilkan <span id="lcount">25</span> BTS</div>
+        <div id="blist"></div>
+      </div>
+      <div class="tpanel" id="tp-stats">
+        <div class="sblk"><div class="big-s"><div class="big-n" id="stot">25</div><div class="big-l">BTS Ditampilkan</div></div></div>
+        <div class="sblk"><div class="stitle">Per Operator</div><div id="st-op"></div></div>
+        <div class="sblk"><div class="stitle">Per Jaringan</div><div id="st-net"></div></div>
+        <div class="sblk"><div class="stitle">Per Kab/Kota</div><div id="st-kab"></div></div>
+      </div>
+    </div>
+    <div id="leafmap"></div>
+  </div>
+
+  <div id="lc">
+    <div class="lc-t">🗺 Layer</div>
+    <div class="lci"><input type="radio" name="bm" id="bm-osm" checked/><label for="bm-osm">OpenStreetMap</label></div>
+    <div class="lci"><input type="radio" name="bm" id="bm-sat"/><label for="bm-sat">Satelit</label></div>
+    <div class="lci"><input type="radio" name="bm" id="bm-dark"/><label for="bm-dark">Dark Mode</label></div>
+    <hr style="border-color:rgba(255,255,255,.08);margin:7px 0"/>
+    <div class="lci"><input type="checkbox" id="lyr-cl" checked/><label for="lyr-cl">Clustering</label></div>
+    <div class="lci"><input type="checkbox" id="lyr-hm"/><label for="lyr-hm">Heatmap</label></div>
+  </div>
+  <div id="lgnd">
+    <div class="lg-t">Operator</div>
+    <div class="lg-i"><div class="lg-d" style="background:#FF0000"></div>Telkomsel</div>
+    <div class="lg-i"><div class="lg-d" style="background:#FFB300"></div>Indosat</div>
+    <div class="lg-i"><div class="lg-d" style="background:#1565C0"></div>XL Axiata</div>
+    <div class="lg-i"><div class="lg-d" style="background:#7C4DFF"></div>Tri</div>
+    <hr style="border-color:rgba(0,229,255,.12);margin:7px 0"/>
+    <div class="lg-t">Jaringan</div>
+    <div class="lg-i"><div class="lg-d" style="background:#546E7A;border-radius:3px"></div>2G</div>
+    <div class="lg-i"><div class="lg-d" style="background:#00796B;border-radius:3px"></div>3G</div>
+    <div class="lg-i"><div class="lg-d" style="background:#0097A7;border-radius:3px"></div>4G</div>
+    <div class="lg-i"><div class="lg-d" style="background:#00C853;border-radius:3px"></div>5G</div>
+    <hr style="border-color:rgba(0,229,255,.12);margin:7px 0"/>
+    <div class="lg-t">Kepadatan Heatmap</div>
+    <div class="lg-i"><div class="lg-d" style="background:rgba(0,200,83,.2);border:1px solid rgba(0,200,83,.5);border-radius:50%"></div>Rendah</div>
+    <div class="lg-i"><div class="lg-d" style="background:rgba(0,151,167,.35);border:1px solid rgba(0,151,167,.7);border-radius:50%"></div>Sedang</div>
+    <div class="lg-i"><div class="lg-d" style="background:rgba(255,109,0,.45);border:1px solid rgba(255,109,0,.8);border-radius:50%"></div>Tinggi</div>
+  </div>
+  <div id="ibar">
+    <span>📍 <span id="c-lat">—</span></span>
+    <span><span id="c-lng">—</span></span>
+    <span>🔍 Zoom: <span id="c-zm">8</span></span>
+    <span style="margin-left:auto;opacity:.6">WebGIS BTS Riau · Tota · Dirra · Shalna · Ibas · Satrio · Mustopa</span>
+  </div>
+  <div id="notif"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
+<script>
+const BTS=[
+  {id:1,nama:"BTS-PKU-001",operator:"Telkomsel",jaringan:"4G",lat:0.5071,lng:101.4478,ketinggian:42,kab_kota:"Pekanbaru",kecamatan:"Sukajadi",status:"Aktif",tahun:2019},
+  {id:2,nama:"BTS-PKU-002",operator:"Indosat",jaringan:"4G",lat:0.4897,lng:101.3780,ketinggian:38,kab_kota:"Pekanbaru",kecamatan:"Tampan",status:"Aktif",tahun:2020},
+  {id:3,nama:"BTS-PKU-003",operator:"XL Axiata",jaringan:"4G",lat:0.5317,lng:101.4520,ketinggian:35,kab_kota:"Pekanbaru",kecamatan:"Rumbai",status:"Aktif",tahun:2021},
+  {id:4,nama:"BTS-PKU-004",operator:"Tri",jaringan:"3G",lat:0.4672,lng:101.4012,ketinggian:30,kab_kota:"Pekanbaru",kecamatan:"Bukit Raya",status:"Aktif",tahun:2018},
+  {id:5,nama:"BTS-PKU-005",operator:"Telkomsel",jaringan:"5G",lat:0.5200,lng:101.4600,ketinggian:50,kab_kota:"Pekanbaru",kecamatan:"Payung Sekaki",status:"Aktif",tahun:2023},
+  {id:6,nama:"BTS-DUM-001",operator:"Telkomsel",jaringan:"4G",lat:1.6667,lng:101.4500,ketinggian:40,kab_kota:"Dumai",kecamatan:"Dumai Kota",status:"Aktif",tahun:2019},
+  {id:7,nama:"BTS-DUM-002",operator:"Indosat",jaringan:"4G",lat:1.6800,lng:101.4200,ketinggian:36,kab_kota:"Dumai",kecamatan:"Dumai Selatan",status:"Aktif",tahun:2020},
+  {id:8,nama:"BTS-DUM-003",operator:"XL Axiata",jaringan:"3G",lat:1.6500,lng:101.4700,ketinggian:32,kab_kota:"Dumai",kecamatan:"Dumai Barat",status:"Aktif",tahun:2018},
+  {id:9,nama:"BTS-SEI-001",operator:"Telkomsel",jaringan:"4G",lat:1.0000,lng:102.0000,ketinggian:38,kab_kota:"Siak",kecamatan:"Siak",status:"Aktif",tahun:2020},
+  {id:10,nama:"BTS-SEI-002",operator:"Tri",jaringan:"3G",lat:1.0200,lng:101.9800,ketinggian:28,kab_kota:"Siak",kecamatan:"Tualang",status:"Aktif",tahun:2017},
+  {id:11,nama:"BTS-KMR-001",operator:"Telkomsel",jaringan:"4G",lat:0.8500,lng:101.4700,ketinggian:42,kab_kota:"Kampar",kecamatan:"Bangkinang",status:"Aktif",tahun:2019},
+  {id:12,nama:"BTS-KMR-002",operator:"Indosat",jaringan:"4G",lat:0.8200,lng:101.4900,ketinggian:38,kab_kota:"Kampar",kecamatan:"Kampar",status:"Aktif",tahun:2020},
+  {id:13,nama:"BTS-IHH-001",operator:"Telkomsel",jaringan:"4G",lat:0.3600,lng:101.4600,ketinggian:40,kab_kota:"Pelalawan",kecamatan:"Pangkalan Kerinci",status:"Aktif",tahun:2020},
+  {id:14,nama:"BTS-IHH-002",operator:"XL Axiata",jaringan:"3G",lat:0.3200,lng:101.4200,ketinggian:30,kab_kota:"Pelalawan",kecamatan:"Langgam",status:"Aktif",tahun:2018},
+  {id:15,nama:"BTS-IHH-003",operator:"Indosat",jaringan:"4G",lat:0.3900,lng:101.5000,ketinggian:36,kab_kota:"Pelalawan",kecamatan:"Ukui",status:"Aktif",tahun:2021},
+  {id:16,nama:"BTS-BKS-001",operator:"Telkomsel",jaringan:"4G",lat:0.4800,lng:102.0800,ketinggian:44,kab_kota:"Bengkalis",kecamatan:"Bengkalis",status:"Aktif",tahun:2019},
+  {id:17,nama:"BTS-BKS-002",operator:"Tri",jaringan:"2G",lat:0.4500,lng:102.1000,ketinggian:25,kab_kota:"Bengkalis",kecamatan:"Bantan",status:"Aktif",tahun:2016},
+  {id:18,nama:"BTS-IHH-004",operator:"Telkomsel",jaringan:"3G",lat:0.2500,lng:101.3500,ketinggian:35,kab_kota:"Indragiri Hulu",kecamatan:"Rengat",status:"Aktif",tahun:2018},
+  {id:19,nama:"BTS-KPR-001",operator:"Telkomsel",jaringan:"4G",lat:2.0167,lng:100.9333,ketinggian:40,kab_kota:"Rokan Hulu",kecamatan:"Pasir Pengaraian",status:"Aktif",tahun:2020},
+  {id:20,nama:"BTS-RHH-001",operator:"Indosat",jaringan:"4G",lat:2.3200,lng:101.0000,ketinggian:38,kab_kota:"Rokan Hilir",kecamatan:"Bagansiapiapi",status:"Aktif",tahun:2021},
+  {id:21,nama:"BTS-KPR-002",operator:"XL Axiata",jaringan:"4G",lat:2.0500,lng:100.9000,ketinggian:36,kab_kota:"Rokan Hulu",kecamatan:"Tambusai",status:"Aktif",tahun:2022},
+  {id:22,nama:"BTS-PKU-006",operator:"Telkomsel",jaringan:"5G",lat:0.4900,lng:101.4300,ketinggian:55,kab_kota:"Pekanbaru",kecamatan:"Marpoyan Damai",status:"Aktif",tahun:2023},
+  {id:23,nama:"BTS-MRG-001",operator:"Tri",jaringan:"3G",lat:0.4000,lng:102.5000,ketinggian:28,kab_kota:"Meranti",kecamatan:"Selatpanjang",status:"Aktif",tahun:2017},
+  {id:24,nama:"BTS-KWR-001",operator:"Telkomsel",jaringan:"4G",lat:0.0167,lng:101.0667,ketinggian:38,kab_kota:"Kuantan Singingi",kecamatan:"Teluk Kuantan",status:"Aktif",tahun:2019},
+  {id:25,nama:"BTS-IHL-001",operator:"Indosat",jaringan:"3G",lat:-0.3500,lng:102.5667,ketinggian:32,kab_kota:"Indragiri Hilir",kecamatan:"Tembilahan",status:"Aktif",tahun:2018}
+];
+const OPC={'Telkomsel':'#FF0000','Indosat':'#FFB300','XL Axiata':'#1565C0','Tri':'#7C4DFF'};
+const NETC={'2G':'#546E7A','3G':'#00796B','4G':'#0097A7','5G':'#00C853'};
+
+/* ── AUTH ── */
+const getUsers=()=>{try{return JSON.parse(localStorage.getItem('wgis_u')||'[]')}catch{return[]}};
+const saveUsers=u=>localStorage.setItem('wgis_u',JSON.stringify(u));
+const setSession=u=>{localStorage.setItem('wgis_s',JSON.stringify(u))};
+const getSession=()=>{try{return JSON.parse(localStorage.getItem('wgis_s')||'null')}catch{return null}};
+const clearSession=()=>localStorage.removeItem('wgis_s');
+
+function showErr(m){const e=document.getElementById('aerr');e.textContent=m;e.style.display='block';document.getElementById('aok').style.display='none'}
+function showOk(m){const e=document.getElementById('aok');e.textContent=m;e.style.display='block';document.getElementById('aerr').style.display='none'}
+function clearMsg(){document.getElementById('aerr').style.display='none';document.getElementById('aok').style.display='none'}
+
+function doLogin(){
+  clearMsg();
+  const em=document.getElementById('l-em').value.trim();
+  const pw=document.getElementById('l-pw').value;
+  if(!em||!pw){showErr('Isi email dan password terlebih dahulu.');return}
+  const u=getUsers().find(x=>x.email===em&&x.password===pw);
+  if(!u){showErr('Email atau password salah.');return}
+  setSession(u); enterMap(u);
+}
+function doRegister(){
+  clearMsg();
+  const fn=document.getElementById('r-fn').value.trim();
+  const ln=document.getElementById('r-ln').value.trim();
+  const em=document.getElementById('r-em').value.trim();
+  const inst=document.getElementById('r-in').value.trim();
+  const pw=document.getElementById('r-pw').value;
+  const pw2=document.getElementById('r-pw2').value;
+  if(!fn||!em||!pw){showErr('Nama, email, dan password wajib diisi.');return}
+  if(pw.length<6){showErr('Password minimal 6 karakter.');return}
+  if(pw!==pw2){showErr('Konfirmasi password tidak cocok.');return}
+  const users=getUsers();
+  if(users.find(x=>x.email===em)){showErr('Email sudah terdaftar. Silakan masuk.');return}
+  const u={id:Date.now(),name:fn+' '+ln,fname:fn,email:em,inst,password:pw,role:'user'};
+  users.push(u); saveUsers(users);
+  showOk('✓ Akun berhasil dibuat! Silakan masuk.');
+  setTimeout(()=>switchAuthTab('login'),1600);
+}
+function guestLogin(){
+  const u={id:0,name:'Guest User',fname:'Guest',email:'guest@demo.com',role:'guest'};
+  setSession(u); enterMap(u);
+}
+function doLogout(){
+  clearSession(); toggleMenu(); showPage('pg-home');
+  showNtf('Berhasil keluar ✓');
+}
+function enterMap(u){
+  const init=(u.fname||u.name||'G').substring(0,2).toUpperCase();
+  document.getElementById('u-av').textContent=init;
+  document.getElementById('u-nm').textContent=u.fname||'Guest';
+  document.getElementById('um-name').textContent=u.name||'Guest User';
+  document.getElementById('um-email').textContent=u.role==='guest'?'Mode Demo':u.email;
+  showPage('pg-map'); initMap();
+}
+
+/* ── PAGES ── */
+function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById(id).classList.add('active')}
+function showAuth(tab){clearMsg();document.getElementById('l-em').value='';document.getElementById('l-pw').value='';showPage('pg-auth');switchAuthTab(tab||'login')}
+function switchAuthTab(t){
+  document.getElementById('tab-login').classList.toggle('active',t==='login');
+  document.getElementById('tab-reg').classList.toggle('active',t==='register');
+  document.getElementById('form-login').style.display=t==='login'?'block':'none';
+  document.getElementById('form-reg').style.display=t==='register'?'block':'none';
+  clearMsg();
+}
+function smoothScroll(id){document.querySelector(id)?.scrollIntoView({behavior:'smooth'})}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&document.getElementById('pg-auth').classList.contains('active')){
+    document.getElementById('form-login').style.display!=='none'?doLogin():doRegister();
+  }
+});
+
+/* ── MAP ── */
+let map,cgr,pgr,hlr,mm={};
+let mapInited=false;
+let aops=new Set(['Telkomsel','Indosat','XL Axiata','Tri']);
+let anets=new Set(['2G','3G','4G','5G']);
+let akabs=new Set();
+let sq='',clMode=true,selId=null;
+
+function initMap(){
+  if(mapInited){renderMap();return}
+  mapInited=true;
+  map=L.map('leafmap',{center:[0.8,101.5],zoom:8,zoomControl:true});
+  map.zoomControl.setPosition('bottomright');
+  const bms={
+    osm:L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}),
+    sat:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19}),
+    drk:L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}),
+  };
+  bms.osm.addTo(map);
+  document.querySelectorAll('input[name=bm]').forEach(r=>r.addEventListener('change',()=>{Object.values(bms).forEach(b=>map.removeLayer(b));if(r.id==='bm-osm')bms.osm.addTo(map);if(r.id==='bm-sat')bms.sat.addTo(map);if(r.id==='bm-dark')bms.drk.addTo(map)}));
+  map.on('mousemove',e=>{document.getElementById('c-lat').textContent=e.latlng.lat.toFixed(5);document.getElementById('c-lng').textContent=e.latlng.lng.toFixed(5)});
+  map.on('zoomend',()=>document.getElementById('c-zm').textContent=map.getZoom());
+  cgr=L.markerClusterGroup({chunkedLoading:true}); pgr=L.layerGroup(); map.addLayer(cgr);
+
+  const kabs=[...new Set(BTS.map(d=>d.kab_kota))].sort();
+  document.getElementById('f-kab').innerHTML=kabs.map(k=>`<button class="chip" data-kab="${k}">${k}</button>`).join('');
+  document.querySelectorAll('#f-kab .chip').forEach(b=>b.addEventListener('click',()=>{const k=b.dataset.kab;if(akabs.has(k)){akabs.delete(k);b.classList.remove('active')}else{akabs.add(k);b.classList.add('active')};renderMap()}));
+  document.querySelectorAll('.stab').forEach(t=>t.addEventListener('click',()=>{const tab=t.dataset.tab;document.querySelectorAll('.stab').forEach(x=>x.classList.toggle('active',x.dataset.tab===tab));document.querySelectorAll('.tpanel').forEach(p=>p.classList.toggle('active',p.id==='tp-'+tab))}));
+  document.querySelectorAll('#f-op .chip').forEach(b=>b.addEventListener('click',()=>{const o=b.dataset.op;if(aops.has(o)){aops.delete(o);b.classList.remove('active')}else{aops.add(o);b.classList.add('active')};renderMap()}));
+  document.querySelectorAll('#f-net .chip').forEach(b=>b.addEventListener('click',()=>{const n=b.dataset.net;if(anets.has(n)){anets.delete(n);b.classList.remove('active')}else{anets.add(n);b.classList.add('active')};renderMap()}));
+  document.getElementById('btn-rst').addEventListener('click',()=>{aops=new Set(['Telkomsel','Indosat','XL Axiata','Tri']);anets=new Set(['2G','3G','4G','5G']);akabs.clear();sq='';document.getElementById('srch').value='';document.querySelectorAll('#f-op .chip,#f-net .chip').forEach(c=>c.classList.add('active'));document.querySelectorAll('#f-kab .chip').forEach(c=>c.classList.remove('active'));renderMap();showNtf('Filter direset ✓')});
+  document.getElementById('srch').addEventListener('input',e=>{sq=e.target.value;renderMap()});
+  document.getElementById('lyr-cl').addEventListener('change',e=>{clMode=e.target.checked;if(clMode){map.removeLayer(pgr);map.addLayer(cgr)}else{map.removeLayer(cgr);map.addLayer(pgr)};renderMap()});
+  document.getElementById('lyr-hm').addEventListener('change',()=>renderHeat(getFiltered()));
+  renderMap();
+}
+
+function getFiltered(){
+  const q=sq.toLowerCase();
+  return BTS.filter(d=>aops.has(d.operator)&&anets.has(d.jaringan)&&(akabs.size===0||akabs.has(d.kab_kota))&&(q===''||d.nama.toLowerCase().includes(q)||d.kab_kota.toLowerCase().includes(q)||d.kecamatan.toLowerCase().includes(q)));
+}
+function mkIcon(op){const c=OPC[op]||'#aaa';const s=`<svg xmlns="http://www.w3.org/2000/svg" width="26" height="34" viewBox="0 0 26 34"><ellipse cx="13" cy="31" rx="5" ry="2" fill="rgba(0,0,0,.2)"/><path d="M13 2C7 2 2 7 2 13C2 21 13 32 13 32C13 32 24 21 24 13C24 7 19 2 13 2Z" fill="${c}" stroke="white" stroke-width="1.5"/><circle cx="13" cy="13" r="4.5" fill="white" opacity=".9"/></svg>`;return L.divIcon({html:s,className:'',iconSize:[26,34],iconAnchor:[13,32],popupAnchor:[0,-32]})}
+function mkPopup(d){return`<div class="pu"><div class="pu-hd"><div class="pu-ic">📡</div><div><div class="pu-name">${d.nama}</div><div class="pu-op" style="color:${OPC[d.operator]}">${d.operator}</div></div></div><div class="pu-grid"><div class="pu-f"><div class="pu-fl">Jaringan</div><div class="pu-fv" style="color:${NETC[d.jaringan]}">${d.jaringan}</div></div><div class="pu-f"><div class="pu-fl">Ketinggian</div><div class="pu-fv">${d.ketinggian} m</div></div><div class="pu-f"><div class="pu-fl">Wilayah</div><div class="pu-fv">${d.kab_kota}</div></div><div class="pu-f"><div class="pu-fl">Tahun</div><div class="pu-fv">${d.tahun}</div></div><div class="pu-f" style="grid-column:span 2"><div class="pu-fl">Kecamatan</div><div class="pu-fv">${d.kecamatan}</div></div></div><span class="pu-st">✓ ${d.status}</span></div>`}
+
+function renderMap(){
+  cgr.clearLayers();pgr.clearLayers();mm={};
+  const f=getFiltered();
+  f.forEach(d=>{const m=L.marker([d.lat,d.lng],{icon:mkIcon(d.operator)}).bindPopup(mkPopup(d),{maxWidth:270});m.on('click',()=>selBTS(d.id));mm[d.id]=m;if(clMode)cgr.addLayer(m);else pgr.addLayer(m)});
+  if(!clMode&&!map.hasLayer(pgr))map.addLayer(pgr);
+  document.getElementById('hs-sh').textContent=f.length;
+  document.getElementById('lcount').textContent=f.length;
+  document.getElementById('stot').textContent=f.length;
+  renderList(f);renderStats(f);renderHeat(f);
+}
+function renderList(f){
+  document.getElementById('blist').innerHTML=f.map(d=>`<div class="bitem${selId===d.id?' sel':''}" data-id="${d.id}"><div class="bdot" style="background:${OPC[d.operator]}"></div><div class="binfo"><div class="bname">${d.nama}</div><div class="bmeta">${d.kab_kota} · ${d.kecamatan}</div></div><div class="bbdg" style="background:${NETC[d.jaringan]}">${d.jaringan}</div></div>`).join('');
+  document.querySelectorAll('.bitem').forEach(el=>el.addEventListener('click',()=>selBTS(+el.dataset.id)));
+}
+function renderStats(f){
+  const cnt=(a,k)=>a.reduce((acc,d)=>{acc[d[k]]=(acc[d[k]]||0)+1;return acc},{});
+  const bars=(o,c)=>{const mx=Math.max(...Object.values(o),1);return Object.entries(o).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="srow"><div class="srl">${k}</div><div class="sbw"><div class="sb" style="width:${(v/mx*100).toFixed(0)}%;background:${c?.[k]||'var(--cyan)'}"></div></div><div class="srv">${v}</div></div>`).join('')};
+  document.getElementById('st-op').innerHTML=bars(cnt(f,'operator'),OPC);
+  document.getElementById('st-net').innerHTML=bars(cnt(f,'jaringan'),NETC);
+  document.getElementById('st-kab').innerHTML=bars(cnt(f,'kab_kota'),null);
+}
+function renderHeat(f){
+  if(hlr){map.removeLayer(hlr);hlr=null}
+  if(!document.getElementById('lyr-hm').checked)return;
+  hlr=L.layerGroup(f.map(d=>L.circle([d.lat,d.lng],{radius:15000,color:'transparent',fillColor:OPC[d.operator]||'#0097A7',fillOpacity:.12})));
+  map.addLayer(hlr);
+}
+function selBTS(id){
+  selId=id;const d=BTS.find(x=>x.id===id);if(!d)return;
+  document.querySelectorAll('.stab').forEach(x=>x.classList.toggle('active',x.dataset.tab==='list'));
+  document.querySelectorAll('.tpanel').forEach(p=>p.classList.toggle('active',p.id==='tp-list'));
+  map.flyTo([d.lat,d.lng],13,{duration:1.2});
+  setTimeout(()=>{const m=mm[id];if(m){if(clMode)cgr.zoomToShowLayer(m,()=>m.openPopup());else m.openPopup()}},1300);
+  renderList(getFiltered());
+}
+function toggleMenu(){const m=document.getElementById('umenu');m.style.display=m.style.display==='block'?'none':'block'}
+document.addEventListener('click',e=>{if(!e.target.closest('#usr-btn')&&!e.target.closest('#umenu'))document.getElementById('umenu').style.display='none'});
+function showNtf(msg){const e=document.getElementById('notif');e.textContent=msg;e.style.display='block';setTimeout(()=>e.style.display='none',2200)}
+
+/* ── PREPROCESSING ── */
+function showPPSection(id){
+  document.querySelectorAll('.pp-section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.pp-nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+function decToDMS(deg){
+  const d=Math.floor(Math.abs(deg)),m=Math.floor((Math.abs(deg)-d)*60),s=((Math.abs(deg)-d-m/60)*3600).toFixed(1);
+  return `${d}°${m}'${s}" ${deg>=0?'N/E':'S/W'}`;
+}
+
+function isValidRiau(lat,lng){
+  return lat>=-0.9982&&lat<=2.9167&&lng>=100.2167&&lng<=102.7833;
+}
+
+let ppInited=false;
+function initPP(){
+  if(ppInited)return; ppInited=true;
+
+  // Cleaning table
+  const ctb=document.getElementById('cleaning-table');
+  ctb.innerHTML=BTS.slice(0,10).map(d=>`<tr>
+    <td style="color:var(--accent);font-family:'Space Mono',monospace">${d.id}</td>
+    <td>${d.nama}</td><td>${d.operator}</td>
+    <td><span style="background:${NETC[d.jaringan]}22;color:${NETC[d.jaringan]};padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">${d.jaringan}</span></td>
+    <td>${d.kab_kota}</td>
+    <td><span class="pp-badge ok" style="font-size:10px">✓ ${d.status}</span></td>
+    <td style="font-family:'Space Mono',monospace">${d.tahun}</td>
+  </tr>`).join('');
+
+  // Validasi koordinat table
+  const vtb=document.getElementById('validasi-table');
+  let validOk=0,validErr=0;
+  vtb.innerHTML=BTS.map(d=>{
+    const ok=isValidRiau(d.lat,d.lng);
+    if(ok)validOk++;else validErr++;
+    return`<tr>
+      <td style="color:var(--accent);font-family:'Space Mono',monospace">${d.id}</td>
+      <td>${d.nama}</td>
+      <td class="coord-val">${d.lat.toFixed(4)}</td>
+      <td class="coord-val">${d.lng.toFixed(4)}</td>
+      <td>${d.kab_kota}</td>
+      <td>${ok?'<span class="pp-badge ok">✓ Valid</span>':'<span class="pp-badge err">✗ Outlier</span>'}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('val-total').textContent=BTS.length;
+  document.getElementById('val-ok').textContent=validOk;
+  document.getElementById('val-err').textContent=validErr;
+  document.getElementById('val-pct').textContent=((validOk/BTS.length)*100).toFixed(1)+'%';
+
+  // GeoJSON preview
+  const gjSample={type:"FeatureCollection",crs:{type:"name",properties:{name:"urn:ogc:def:crs:OGC:1.3:CRS84"}},features:BTS.slice(0,2).map(d=>({type:"Feature",geometry:{type:"Point",coordinates:[d.lng,d.lat]},properties:{id:d.id,nama:d.nama,operator:d.operator,jaringan:d.jaringan,ketinggian:d.ketinggian,kab_kota:d.kab_kota,kecamatan:d.kecamatan,status:d.status,tahun:d.tahun}}))};
+  document.getElementById('geojson-preview').textContent=JSON.stringify(gjSample,null,2).substring(0,900)+'...\n// (+ '+(BTS.length-2)+' features lainnya)';
+  document.getElementById('gj-count').textContent=BTS.length+' features';
+
+  // WGS84 table
+  const wtb=document.getElementById('wgs84-table');
+  wtb.innerHTML=BTS.slice(0,8).map(d=>`<tr>
+    <td>${d.nama}</td><td>${d.kab_kota}</td>
+    <td class="coord-val">${d.lat.toFixed(5)}°</td>
+    <td class="coord-val">${d.lng.toFixed(5)}°</td>
+    <td style="font-size:10px;color:rgba(255,255,255,.45)">${decToDMS(d.lat)}, ${decToDMS(d.lng)}</td>
+  </tr>`).join('');
+
+  // Blank spot
+  const kabCount=BTS.reduce((a,d)=>{a[d.kab_kota]=(a[d.kab_kota]||0)+1;return a},{});
+  const allKabs=['Pekanbaru','Dumai','Kampar','Rokan Hulu','Rokan Hilir','Bengkalis','Siak','Pelalawan','Indragiri Hulu','Indragiri Hilir','Kuantan Singingi','Kepulauan Meranti'];
+  const bsl=document.getElementById('blankspot-list');
+  const lowKabs=allKabs.filter(k=>(kabCount[k]||0)<2);
+  bsl.innerHTML=lowKabs.map(k=>`<div class="blank-spot-item">
+    <div class="blank-dot"></div>
+    <div class="blank-area">${k}</div>
+    <div class="blank-meta">${kabCount[k]||0} BTS tercatat</div>
+    <span class="pp-badge ${(kabCount[k]||0)===0?'err':'warn'}">${(kabCount[k]||0)===0?'Tidak ada data':'Coverage rendah'}</span>
+  </div>`).join('')||'<div style="color:var(--green);font-size:13px">✓ Semua kabupaten memiliki coverage BTS</div>';
+
+  // Density chart
+  const dl=document.getElementById('density-list');
+  const sorted=Object.entries(kabCount).sort((a,b)=>b[1]-a[1]);
+  const max=sorted[0][1];
+  dl.innerHTML=sorted.map(([k,v])=>`<div style="margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+      <span style="color:rgba(255,255,255,.7)">${k}</span>
+      <span style="font-weight:700;color:var(--accent)">${v} BTS</span>
+    </div>
+    <div class="pp-progress"><div class="pp-progress-fill" style="width:${(v/max*100).toFixed(0)}%;background:${v>=5?'var(--green)':v>=3?'var(--cyan)':'#FFB300'}"></div></div>
+  </div>`).join('');
+
+  document.getElementById('sum-total').textContent=BTS.length;
+}
+
+function downloadGeoJSON(){
+  const gj={type:"FeatureCollection",crs:{type:"name",properties:{name:"urn:ogc:def:crs:OGC:1.3:CRS84"}},features:BTS.map(d=>({type:"Feature",geometry:{type:"Point",coordinates:[d.lng,d.lat]},properties:{id:d.id,nama:d.nama,operator:d.operator,jaringan:d.jaringan,ketinggian_m:d.ketinggian,kab_kota:d.kab_kota,kecamatan:d.kecamatan,status:d.status,tahun:d.tahun}}))};
+  const blob=new Blob([JSON.stringify(gj,null,2)],{type:'application/geo+json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='bts_riau.geojson';a.click();
+  showNtf('✓ bts_riau.geojson berhasil didownload');
+}
+
+window.addEventListener('load',()=>{
+  const s=getSession();
+  setTimeout(()=>{document.getElementById('pg-loading').classList.remove('active');if(s)enterMap(s);else showPage('pg-home')},1800);
+});
+</script>
+</body>
+</html>
