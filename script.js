@@ -5,11 +5,12 @@
 
 // #DATA — Dataset BTS Riau (Dari Database PorsgreSQL)
 let BTS = [];
-async function loadBTSData() {
+
+async function loadData(){
 
   try {
 
-    const response = await fetch('http://localhost:3000/bts');
+    const response = await fetch('https://persebaran-bts-production.up.railway.app/bts');
 
     BTS = await response.json();
 
@@ -18,12 +19,10 @@ async function loadBTSData() {
     console.log('Data BTS berhasil dimuat:', BTS);
 
     initMap();
-    
-  } catch(error) {
 
-    console.error('Gagal mengambil data BTS:', error);
+  } catch(err){
 
-    alert('Backend PostgreSQL gagal terhubung');
+    console.log(err);
 
   }
 
@@ -616,82 +615,40 @@ function renderStats(f) {
 }
 
 // #MAP — Heatmap Kepadatan BTS untuk Analisis Blankspot
-function renderHeat(f) {
-
+function renderHeat(f){
   // hapus heatmap lama
-  if (hlr) {
-
-    map.removeLayer(hlr);
-    hlr = null;
-
+  if(hlr){
+  map.removeLayer(hlr);
   }
 
-  // kalau layer dimatikan
-  if (!document.getElementById('lyr-hm').checked) return;
+  // ambil data koordinat valid
+  const pts = f
+  .filter(d =>
+    !isNaN(parseFloat(d.latitude)) &&
+    !isNaN(parseFloat(d.longitude))
+  )
+  .map(d => [
+    parseFloat(d.latitude),
+    parseFloat(d.longitude),
+    1
+  ]);
 
-  // validasi data koordinat
-  const heatData = [];
-    f.forEach(d => {
+  // kalau kosong jangan render
+  if(pts.length === 0){
+    console.warn("Heatmap kosong");
+    return;
+  }
 
-      const lat = parseFloat(d.latitude);
-      const lng = parseFloat(d.longitude);
-
-      // skip kalau koordinat invalid
-      if (isNaN(lat) || isNaN(lng)) return;
-
-      // hitung BTS di sekitar radius tertentu
-      const nearby = f.filter(x => {
-
-        const xLat = parseFloat(x.latitude);
-        const xLng = parseFloat(x.longitude);
-
-        if (isNaN(xLat) || isNaN(xLng)) return false;
-
-        // hitung jarak sederhana
-        const dx = lat - xLat;
-        const dy = lng - xLng;
-
-        // radius kepadatan
-        return Math.sqrt(dx * dx + dy * dy) < 0.05;
-
-      }).length;
-
-      // intensitas heatmap
-      const intensity = nearby / 10;
-
-      heatData.push([
-
-        lat,
-        lng,
-        intensity
-
-      ]);
-
-    });
-
-  // kalau data kosong
-  if (heatData.length === 0) return;
-
-  // buat heatmap
-  hlr = L.heatLayer(heatData, {
-
-    radius: 28,
-    blur: 20,
-    maxZoom: 17,
-
-    gradient: {
-
-      0.1: '#00ffff',
-      0.3: '#00ff99',
-      0.5: '#ffff00',
-      0.7: '#ff9900',
-      1.0: '#ff0000'
-
-    }
-
+  hlr = L.heatLayer(pts, {
+    radius: 25,
+    blur: 15,
+    maxZoom: 10
   });
 
-  hlr.addTo(map);
+  // tampilkan kalau layer heatmap aktif
+  if(document.getElementById('lyr-hm').checked){
+    hlr.addTo(map);
+  }
 
 }
 
