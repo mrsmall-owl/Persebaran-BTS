@@ -528,6 +528,23 @@ function renderYearChart(data){
       responsive: true,
 
       plugins: {
+        tooltip: {
+          callbacks: {
+            label: function(ctx){
+              // jumlah BTS tahun aktif
+              const jumlahTahunIni = ctx.parsed.y;
+              // hitung total kumulatif sampai tahun ini
+              let totalKumulatif = 0;
+              for(let i = 0; i <= ctx.dataIndex; i++){
+                totalKumulatif += values[i];
+              }
+              return [
+                `Jumlah BTS Tahun ${ctx.label} : ${jumlahTahunIni}`,
+                `Total BTS Hingga ${ctx.label} : ${totalKumulatif}`
+              ];
+            }
+          }
+        },
         legend: {
           labels: {
             usePointStyle: true,
@@ -543,12 +560,10 @@ function renderYearChart(data){
       },
 
       scales: {
-
         x: {
           grid: {
             color: 'rgba(0,255,255,0.08)'
           },
-
           ticks: {
             color: '#7ee7ff',
 
