@@ -697,7 +697,7 @@ function showNtf(msg) {
 
 window.addEventListener('load', async () => {
 
-  await loadBTSData();
+  await loadData();
   const s = getSession();
   // Tampilkan loading screen 1.8 detik, lalu arahkan ke peta (jika ada sesi) atau beranda
   setTimeout(() => {
