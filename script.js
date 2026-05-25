@@ -640,9 +640,9 @@ function renderHeat(f){
   }
 
   hlr = L.heatLayer(pts, {
-    radius: 25,
+    radius: 20,
     blur: 15,
-    maxZoom: 10
+    maxZoom: 15
   });
 
   // tampilkan kalau layer heatmap aktif
