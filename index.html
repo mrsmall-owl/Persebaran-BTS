@@ -892,10 +892,51 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
     <div class="lg-i"><div class="lg-d" style="background:#00C853;border-radius:3px"></div>5G</div>
     <hr style="border-color:rgba(0,229,255,.12);margin:7px 0"/>
     <div class="lg-t">Kepadatan Heatmap</div>
-    <div class="lg-i"><div class="lg-d" style="background:rgba(0,200,83,.2);border:1px solid rgba(0,200,83,.5);border-radius:50%"></div>Rendah</div>
-    <div class="lg-i"><div class="lg-d" style="background:rgba(0,151,167,.35);border:1px solid rgba(0,151,167,.7);border-radius:50%"></div>Sedang</div>
-    <div class="lg-i"><div class="lg-d" style="background:rgba(255,109,0,.45);border:1px solid rgba(255,109,0,.8);border-radius:50%"></div>Tinggi</div>
-  </div>
+      <div class="lg-i">
+        <div class="lg-d"
+            style="
+              background:#00ffff;
+              box-shadow:0 0 8px #00ffff">
+        </div>
+        Sangat Rendah
+      </div>
+
+      <div class="lg-i">
+        <div class="lg-d"
+            style="
+              background:#0088ff;
+              box-shadow:0 0 8px #0088ff">
+        </div>
+        Rendah
+      </div>
+
+      <div class="lg-i">
+        <div class="lg-d"
+            style="
+              background:#00ff99;
+              box-shadow:0 0 8px #00ff99">
+        </div>
+        Sedang
+      </div>
+
+      <div class="lg-i">
+        <div class="lg-d"
+            style="
+              background:#ffee00;
+              box-shadow:0 0 8px #ffee00">
+        </div>
+        Tinggi
+      </div>
+
+      <div class="lg-i">
+        <div class="lg-d"
+            style="
+              background:#ff2200;
+              box-shadow:0 0 8px #ff2200">
+        </div>
+        Sangat Tinggi
+      </div>
+    </div>
   <div id="ibar">
     <span>📍 <span id="c-lat">—</span></span>
     <span><span id="c-lng">—</span></span>
@@ -907,6 +948,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 
 <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <!-- #SCRIPT JS UTAMA — Semua logika aplikasi dipindahkan ke file script.js -->

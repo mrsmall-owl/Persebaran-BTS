@@ -3,7 +3,7 @@
 // ============================================================
 
 
-// #DATA — Dataset BTS Riau (Dari Database)
+// #DATA — Dataset BTS Riau (Dari Database PorsgreSQL)
 let BTS = [];
 async function loadBTSData() {
 
@@ -12,6 +12,8 @@ async function loadBTSData() {
     const response = await fetch('http://localhost:3000/bts');
 
     BTS = await response.json();
+
+    console.table(BTS);
 
     console.log('Data BTS berhasil dimuat:', BTS);
 
@@ -299,7 +301,19 @@ function initMap() {
   document.getElementById('btn-rst').addEventListener('click', () => {
     aops  = new Set(['Telkomsel', 'Indosat', 'XL Axiata', 'Tri']);
     anets = new Set(['2G', '3G', '4G', '5G']);
-    akabs.clear(); sq = '';
+    akabs = new Set([
+      "Bengkalis",
+      "Indragiri Hilir",
+      "Indragiri Hulu",
+      "Kampar",
+      "Kuantan Singingi",
+      "Pelalawan",
+      "Rokan Hilir",
+      "Rokan Hulu",
+      "Siak",
+      "Kota Dumai",
+      "Kota Pekanbaru"
+    ]);
     document.getElementById('srch').value = '';
     document.querySelectorAll('#f-op .chip, #f-net .chip').forEach(c => c.classList.add('active'));
     document.querySelectorAll('#f-kab .chip').forEach(c => c.classList.remove('active'));
@@ -325,21 +339,35 @@ function initMap() {
 
 // #MAP — Ambil data BTS yang lolos semua filter aktif
 function getFiltered() {
+
   const q = sq.toLowerCase();
-  return BTS.filter(d =>
 
-    aops.has(d.operator) &&
-    anets.has(d.jaringan) &&
-    akabs.has(d.kab_kota) &&
+  return BTS.filter(d => {
 
-    (
-      q === '' ||
-      d.nama_bts.toLowerCase().includes(q) ||
-      d.kab_kota.toLowerCase().includes(q) ||
-      d.operator.toLowerCase().includes(q)
-    )
+    const operator = (d.operator || '').trim();
+    const jaringan = (d.jaringan || '').trim();
+    const kabkota  = (d.kab_kota || '').trim();
 
-  );
+    return (
+
+      aops.has(operator) &&
+      anets.has(jaringan) &&
+      akabs.has(kabkota) &&
+
+      (
+
+        q === '' ||
+
+        (d.nama_bts || '').toLowerCase().includes(q) ||
+        kabkota.toLowerCase().includes(q) ||
+        operator.toLowerCase().includes(q)
+
+      )
+
+    );
+
+  });
+
 }
 
 // #MAP — Buat custom icon marker berbentuk pin dengan warna operator
@@ -575,6 +603,7 @@ function renderStats(f) {
 // #MAP — Heatmap Kepadatan BTS untuk Analisis Blankspot
 function renderHeat(f) {
 
+  // hapus heatmap lama
   if (hlr) {
 
     map.removeLayer(hlr);
@@ -582,38 +611,72 @@ function renderHeat(f) {
 
   }
 
+  // kalau layer dimatikan
   if (!document.getElementById('lyr-hm').checked) return;
 
-  // DATA HEATMAP
-  const heatData = f.map(d => [
+  // validasi data koordinat
+  const heatData = [];
+    f.forEach(d => {
 
-    parseFloat(d.latitude),
-    parseFloat(d.longitude),
-    1
+      const lat = parseFloat(d.latitude);
+      const lng = parseFloat(d.longitude);
 
-  ]);
+      // skip kalau koordinat invalid
+      if (isNaN(lat) || isNaN(lng)) return;
 
-  // BUAT HEATMAP
+      // hitung BTS di sekitar radius tertentu
+      const nearby = f.filter(x => {
+
+        const xLat = parseFloat(x.latitude);
+        const xLng = parseFloat(x.longitude);
+
+        if (isNaN(xLat) || isNaN(xLng)) return false;
+
+        // hitung jarak sederhana
+        const dx = lat - xLat;
+        const dy = lng - xLng;
+
+        // radius kepadatan
+        return Math.sqrt(dx * dx + dy * dy) < 0.05;
+
+      }).length;
+
+      // intensitas heatmap
+      const intensity = nearby / 10;
+
+      heatData.push([
+
+        lat,
+        lng,
+        intensity
+
+      ]);
+
+    });
+
+  // kalau data kosong
+  if (heatData.length === 0) return;
+
+  // buat heatmap
   hlr = L.heatLayer(heatData, {
 
     radius: 28,
     blur: 20,
-    maxZoom: 12,
-    minOpacity: 0.25,
+    maxZoom: 17,
 
     gradient: {
 
-      0.2: '#00ff88',
-      0.4: '#00d5ff',
-      0.6: '#ffee00',
-      0.8: '#ff8800',
+      0.1: '#00ffff',
+      0.3: '#00ff99',
+      0.5: '#ffff00',
+      0.7: '#ff9900',
       1.0: '#ff0000'
 
     }
 
   });
 
-  map.addLayer(hlr);
+  hlr.addTo(map);
 
 }
 
