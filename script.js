@@ -112,12 +112,11 @@ function enterMap(u) {
   showPage('pg-map'); 
 
   setTimeout(() => {
-
-    if (map) {
+    if(map){
       map.invalidateSize();
+      renderHeat(getFiltered()); 
     }
-
-  }, 200);
+  }, 400);
 }
 
 
@@ -166,7 +165,7 @@ document.addEventListener('keydown', e => {
 // #MAP — Inisialisasi & rendering peta Leaflet
 // ============================================================
 let yearChart;
-let map, cgr, pgr, hlr, mm = {};
+let map, cgr, pgr, mm = {};
 let mapInited = false;
 let aops  = new Set(['Telkomsel', 'Indosat', 'XL Axiata', 'Tri']);
 let anets = new Set(['2G', '3G', '4G', '5G']);
@@ -199,14 +198,7 @@ function initMap() {
     drk: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }),
   };
   bms.osm.addTo(map);
-  map.whenReady(() => {
-  setTimeout(() => {
 
-    renderHeat(getFiltered());
-
-  }, 500);
-});
- 
   //BatasRiau
   fetch("data/Batas.json")
   .then(response => response.json())
@@ -285,6 +277,10 @@ function initMap() {
     const tab = t.dataset.tab;
     document.querySelectorAll('.stab').forEach(x => x.classList.toggle('active', x.dataset.tab === tab));
     document.querySelectorAll('.tpanel').forEach(p => p.classList.toggle('active', p.id === 'tp-' + tab));
+  
+    if (tab === 'stats') {
+      setTimeout(() => renderYearChart(getFiltered()), 50);
+    }
   }));
 
   // #FILTER — Event listener chip Operator
@@ -474,7 +470,19 @@ function renderMap() {
   document.getElementById('hs-sh').textContent  = f.length;
   document.getElementById('lcount').textContent = f.length;
   document.getElementById('stot').textContent   = f.length;
-  renderList(f); renderStats(f); renderHeat(f);setTimeout(() => {renderYearChart(f);}, 200); updateExportInfo();
+  renderList(f);
+  renderStats(f);
+  setTimeout(() => {
+    if(map){
+      map.invalidateSize();
+    }
+    renderHeat(f);
+    const chartEl = document.getElementById('yearChart');
+    if(chartEl){
+      renderYearChart(f);
+    }
+  }, 300);
+  updateExportInfo();
 }
 
 // #MAP — Render daftar BTS di panel sidebar kiri
@@ -713,54 +721,75 @@ function renderStats(f) {
   document.getElementById('st-kab').innerHTML = bars(cnt(f, 'kab_kota'), null);
 }
 
-// #MAP — Heatmap Kepadatan BTS untuk Analisis Blankspot
-function renderHeat(f){
+// #MAP — Heatmap Kepadatan BTS (Canvas Manual, tanpa library eksternal)
+let heatCanvas = null;
+let _heatPts   = [];
 
-  if(hlr){
-    map.removeLayer(hlr);
-  }
+function renderHeat(f) {
+  _heatPts = f.map(d => ({
+    lat: parseFloat(d.latitude),
+    lng: parseFloat(d.longitude)
+  })).filter(p => !isNaN(p.lat) && !isNaN(p.lng));
 
-  // kalau checkbox heatmap mati
-  if(!document.getElementById('lyr-hm').checked){
+  if (!document.getElementById('lyr-hm').checked) {
+    if (heatCanvas) heatCanvas.style.display = 'none';
     return;
   }
 
-  // buat titik heatmap
-  const pts = f.map(d => [
+  if (!heatCanvas) {
+    heatCanvas = document.createElement('canvas');
+    heatCanvas.id = 'heat-canvas';
+    heatCanvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:300;';
+    // Sisipkan sebelum leaflet-pane agar marker tetap di atas heatmap
+    const leafmap = document.getElementById('leafmap');
+    const firstPane = leafmap.querySelector('.leaflet-pane');
+    if (firstPane) leafmap.insertBefore(heatCanvas, firstPane);
+    else leafmap.appendChild(heatCanvas);
+    // Auto redraw saat map bergerak/zoom
+    map.on('move zoom viewreset', drawHeatCanvas);
+  }
 
-    parseFloat(d.latitude),
-
-    parseFloat(d.longitude),
-
-    1
-
-  ]).filter(p =>
-    !isNaN(p[0]) &&
-    !isNaN(p[1])
-  );
-
-  // kalau data kosong
-  if(pts.length === 0){return;}
-
-  hlr = L.heatLayer(pts, {
-    radius: 20,
-    blur: 15,
-    maxZoom: 15,
-    minOpacity: 0.4,
-    gradient: {
-      0.2: '#00ffff',
-
-      0.4: '#00ff88',
-
-      0.6: '#ffee00',
-
-      0.8: '#ff8800',
-
-      1.0: '#ff0000'
-    }
-  });
-  hlr.addTo(map);
+  heatCanvas.style.display = 'block';
+  drawHeatCanvas();
 }
+
+function drawHeatCanvas() {
+  if (!heatCanvas || !map) return;
+  if (!document.getElementById('lyr-hm').checked) return;
+
+  const leafmap = document.getElementById('leafmap');
+  const W = leafmap.offsetWidth;
+  const H = leafmap.offsetHeight;
+  if (!W || !H) return;
+
+  heatCanvas.width  = W;
+  heatCanvas.height = H;
+
+  const ctx = heatCanvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+  if (_heatPts.length === 0) return;
+
+  const RADIUS = 50;
+
+  _heatPts.forEach(p => {
+    const px = map.latLngToContainerPoint(L.latLng(p.lat, p.lng));
+    const x  = px.x;
+    const y  = px.y;
+    if (x < -RADIUS || x > W + RADIUS || y < -RADIUS || y > H + RADIUS) return;
+
+    const g = ctx.createRadialGradient(x, y, 0, x, y, RADIUS);
+    g.addColorStop(0.0, 'rgba(255,  30,   0, 0.5)');
+    g.addColorStop(0.3, 'rgba(255, 160,   0, 0.35)');
+    g.addColorStop(0.6, 'rgba(  0, 255, 100, 0.2)');
+    g.addColorStop(1.0, 'rgba(  0, 200, 255, 0)');
+
+    ctx.beginPath();
+    ctx.fillStyle = g;
+    ctx.arc(x, y, RADIUS, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+ 
 window.addEventListener('resize', () => {
   if(map){
     map.invalidateSize();
