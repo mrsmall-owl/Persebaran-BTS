@@ -199,6 +199,13 @@ function initMap() {
     drk: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }),
   };
   bms.osm.addTo(map);
+  map.whenReady(() => {
+  setTimeout(() => {
+
+    renderHeat(getFiltered());
+
+  }, 500);
+});
  
   //BatasRiau
   fetch("data/Batas.json")
@@ -334,6 +341,10 @@ function initMap() {
   document.getElementById('lyr-hm').addEventListener('change', () => renderHeat(getFiltered()));
 
   renderMap();
+  setTimeout(() => {
+    map.invalidateSize();
+    renderHeat(getFiltered());
+  }, 300);
 }
 
 // #MAP — Ambil data BTS yang lolos semua filter aktif
@@ -463,7 +474,7 @@ function renderMap() {
   document.getElementById('hs-sh').textContent  = f.length;
   document.getElementById('lcount').textContent = f.length;
   document.getElementById('stot').textContent   = f.length;
-  renderList(f); renderStats(f); renderHeat(f); renderYearChart(f); updateExportInfo();
+  renderList(f); renderStats(f); renderHeat(f);setTimeout(() => {renderYearChart(f);}, 200); updateExportInfo();
 }
 
 // #MAP — Render daftar BTS di panel sidebar kiri
@@ -489,103 +500,191 @@ function renderYearChart(data){
   const tahunMap = {};
 
   data.forEach(d => {
+
     const th = d.tahun || "Tidak Ada";
+
     tahunMap[th] = (tahunMap[th] || 0) + 1;
+
   });
 
   const labels = Object.keys(tahunMap).sort();
+
   const values = labels.map(l => tahunMap[l]);
 
-  const ctx = document.getElementById('yearChart');
+  const ctx = document
+    .getElementById('yearChart')
+    .getContext('2d');
 
   if(yearChart){
     yearChart.destroy();
   }
 
   yearChart = new Chart(ctx, {
+
     type: 'line',
 
     data: {
+
       labels: labels,
 
       datasets: [{
-        label: 'Jumlah BTS',
+
         data: values,
+
         borderColor: '#00ffff',
+
         borderWidth: 3,
+
         pointRadius: 5,
+
         pointHoverRadius: 7,
-        pointBackgroundColor: '#00ffff',
-        pointStyle: 'line',
-        backgroundColor: 'rgba(0,255,255,0.15)',
+
+        pointBackgroundColor: '#ff2b2b',
+
+        pointBorderColor: '#ffffff',
+
+        pointBorderWidth: 2,
+
+        backgroundColor: 'rgba(0,255,255,0.12)',
+
         tension: 0.3,
+
         fill: true
+
       }]
+
     },
 
     options: {
+
       responsive: true,
 
-      plugins: {
-        tooltip: {
-          callbacks: {
-            label: function(ctx){
-              // jumlah BTS tahun aktif
-              const jumlahTahunIni = ctx.parsed.y;
-              // hitung total kumulatif sampai tahun ini
-              let totalKumulatif = 0;
-              for(let i = 0; i <= ctx.dataIndex; i++){
-                totalKumulatif += values[i];
-              }
-              return [
-                `Jumlah BTS Tahun ${ctx.label} : ${jumlahTahunIni}`,
-                `Total BTS Hingga ${ctx.label} : ${totalKumulatif}`
-              ];
-            }
-          }
-        },
-        legend: {
-          labels: {
-            usePointStyle: true,
-            pointStyle: 'line',
-            color: '#00ffff',
+      maintainAspectRatio: false,
 
-            font: {
-              family: 'Orbitron',
-              size: 12
+      interaction: {
+
+        mode: 'index',
+
+        intersect: false
+
+      },
+
+      plugins: {
+
+        legend: {
+
+          display: false
+
+        },
+
+        tooltip: {
+
+          enabled: true,
+
+          displayColors: false,
+
+          backgroundColor: 'rgba(5,10,20,.92)',
+
+          titleColor: '#00ffff',
+
+          bodyColor: '#ffffff',
+
+          borderColor: '#00ffff',
+
+          borderWidth: 1,
+
+          padding: 8,
+
+          titleFont: {
+
+            size: 11
+
+          },
+
+          bodyFont: {
+
+            size: 10
+
+          },
+
+          callbacks: {
+
+            label: function(ctx){
+
+              const jumlahTahunIni = ctx.parsed.y;
+
+              let totalKumulatif = 0;
+
+              for(let i = 0; i <= ctx.dataIndex; i++){
+
+                totalKumulatif += values[i];
+
+              }
+
+              return [
+
+                `Jumlah BTS : ${jumlahTahunIni}`,
+
+                `Total BTS : ${totalKumulatif}`
+
+              ];
+
             }
+
           }
+
         }
+
       },
 
       scales: {
+
         x: {
+
           grid: {
+
             color: 'rgba(0,255,255,0.08)'
+
           },
+
           ticks: {
-            color: '#7ee7ff',
+
+            color: '#9fb3c8',
 
             font: {
-              family: 'Orbitron',
-              size: 11
+
+              size: 10,
+
+              weight: '600'
+
             }
+
           }
+
         },
 
         y: {
+
           grid: {
+
             color: 'rgba(0,255,255,0.08)'
+
           },
 
           ticks: {
-            color: '#7ee7ff',
+
+            color: '#9fb3c8',
 
             font: {
-              family: 'Orbitron',
-              size: 11
+
+              size: 10,
+
+              weight: '600'
+
             }
+
           }
+
         }
 
       }
@@ -616,41 +715,57 @@ function renderStats(f) {
 
 // #MAP — Heatmap Kepadatan BTS untuk Analisis Blankspot
 function renderHeat(f){
-  // hapus heatmap lama
+
   if(hlr){
-  map.removeLayer(hlr);
+    map.removeLayer(hlr);
   }
 
-  // ambil data koordinat valid
-  const pts = f
-  .filter(d =>
-    !isNaN(parseFloat(d.latitude)) &&
-    !isNaN(parseFloat(d.longitude))
-  )
-  .map(d => [
-    parseFloat(d.latitude),
-    parseFloat(d.longitude),
-    1
-  ]);
-
-  // kalau kosong jangan render
-  if(pts.length === 0){
-    console.warn("Heatmap kosong");
+  // kalau checkbox heatmap mati
+  if(!document.getElementById('lyr-hm').checked){
     return;
   }
+
+  // buat titik heatmap
+  const pts = f.map(d => [
+
+    parseFloat(d.latitude),
+
+    parseFloat(d.longitude),
+
+    1
+
+  ]).filter(p =>
+    !isNaN(p[0]) &&
+    !isNaN(p[1])
+  );
+
+  // kalau data kosong
+  if(pts.length === 0){return;}
 
   hlr = L.heatLayer(pts, {
     radius: 20,
     blur: 15,
-    maxZoom: 15
+    maxZoom: 15,
+    minOpacity: 0.4,
+    gradient: {
+      0.2: '#00ffff',
+
+      0.4: '#00ff88',
+
+      0.6: '#ffee00',
+
+      0.8: '#ff8800',
+
+      1.0: '#ff0000'
+    }
   });
-
-  // tampilkan kalau layer heatmap aktif
-  if(document.getElementById('lyr-hm').checked){
-    hlr.addTo(map);
-  }
-
+  hlr.addTo(map);
 }
+window.addEventListener('resize', () => {
+  if(map){
+    map.invalidateSize();
+  }
+});
 
 // #MAP — Pilih BTS: fly to marker, buka popup, highlight item daftar
 function selBTS(id) {
