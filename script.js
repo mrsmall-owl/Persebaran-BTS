@@ -460,8 +460,9 @@ function renderMap() {
   cgr.clearLayers(); pgr.clearLayers(); mm = {};
   const f = getFiltered();
   f.forEach(d => {
-    const m = L.marker([d.latitude, d.longitude], { icon: mkIcon(d.operator) })
-      .bindPopup(mkPopup(d), { maxWidth: 270 });
+    const m = L.marker([d.latitude, d.longitude], {
+      icon: mkIcon(d.operator),
+    }).bindPopup(mkPopup(d), { maxWidth: 270 });
     m.on('click', () => selBTS(d.id_bts));
     mm[d.id_bts] = m;
     if (clMode) cgr.addLayer(m); else pgr.addLayer(m);
@@ -748,17 +749,15 @@ function renderHeat(data){
     heatCanvas.style.width = '100%';
     heatCanvas.style.height = '100%';
     heatCanvas.style.pointerEvents = 'none';
-    heatCanvas.style.zIndex = '999';
+    heatCanvas.style.zIndex = '400';
 
-    document.getElementById('leafmap')
+    map.getPanes().overlayPane
       .appendChild(heatCanvas);
 
     heatCtx = heatCanvas.getContext('2d');
 
     map.on('move zoom resize', drawHeatCanvas);
   }
-  
-  drawHeatCanvas();
 }
 
 function drawHeatCanvas(){
