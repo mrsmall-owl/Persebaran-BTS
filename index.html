@@ -216,9 +216,34 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 }
 
 #leafmap{
+  position: relative;
   width: 100%;
 
   height: 100%;
+  flex: 1;
+  z-index: 1;
+  overflow: hidden;
+}
+#heat-canvas{
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+  z-index:400;
+  opacity:.9;
+}
+.leaflet-tile-pane{
+  z-index: 200 !important;
+}
+
+.leaflet-overlay-pane{
+  z-index: 400 !important;
+}
+
+.leaflet-marker-pane{
+  z-index: 600 !important;
 }
 .stabs{display:flex;border-bottom:1px solid rgba(255,255,255,.08)}
 .stab{flex:1;padding:10px 0;background:none;border:none;color:rgba(255,255,255,.4);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;cursor:pointer;transition:all .2s;font-family:'DM Sans',sans-serif}
@@ -422,12 +447,7 @@ canvas{
   max-width:100%;
 }
 
-#leafmap{flex:1;z-index:1}
-.leaflet-heatmap-layer {
-  z-index: 200 !important;
-  opacity: 1 !important;
-  mix-blend-mode: normal !important;
-}
+
 .leaflet-popup-content-wrapper{background:var(--navy)!important;border:1px solid rgba(0,229,255,.3)!important;border-radius:12px!important;box-shadow:0 8px 32px rgba(0,0,0,.5)!important;color:var(--white)!important}
 .leaflet-popup-tip{background:var(--navy)!important}
 .leaflet-popup-close-button{color:rgba(255,255,255,.5)!important;font-size:18px!important}

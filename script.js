@@ -113,7 +113,7 @@ function enterMap(u) {
 
   setTimeout(() => {
     if(map){
-      map.invalidateSize();
+      map.invalidateSize(true);
       renderHeat(getFiltered()); 
     }
   }, 400);
@@ -721,73 +721,87 @@ function renderStats(f) {
   document.getElementById('st-kab').innerHTML = bars(cnt(f, 'kab_kota'), null);
 }
 
-// #MAP — Heatmap Kepadatan BTS (Canvas Manual, tanpa library eksternal)
-let heatCanvas = null;
-let _heatPts   = [];
+// ============================================================
+// HEATMAP 
+// ============================================================
 
-function renderHeat(f) {
-  _heatPts = f.map(d => ({
+let heatCanvas = null;
+let heatCtx = null;
+let _heatPts = [];
+
+function renderHeat(data){
+
+  if(!map) return;
+
+  _heatPts = data.map(d => ({
     lat: parseFloat(d.latitude),
     lng: parseFloat(d.longitude)
-  })).filter(p => !isNaN(p.lat) && !isNaN(p.lng));
+  }));
 
-  if (!document.getElementById('lyr-hm').checked) {
-    if (heatCanvas) heatCanvas.style.display = 'none';
-    return;
-  }
-
-  if (!heatCanvas) {
+  if(!heatCanvas){
     heatCanvas = document.createElement('canvas');
     heatCanvas.id = 'heat-canvas';
-    heatCanvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:300;';
-    // Sisipkan sebelum leaflet-pane agar marker tetap di atas heatmap
-    const leafmap = document.getElementById('leafmap');
-    const firstPane = leafmap.querySelector('.leaflet-pane');
-    if (firstPane) leafmap.insertBefore(heatCanvas, firstPane);
-    else leafmap.appendChild(heatCanvas);
-    // Auto redraw saat map bergerak/zoom
-    map.on('move zoom viewreset', drawHeatCanvas);
-  }
 
-  heatCanvas.style.display = 'block';
+    heatCanvas.style.position = 'absolute';
+    heatCanvas.style.top = '0';
+    heatCanvas.style.left = '0';
+    heatCanvas.style.width = '100%';
+    heatCanvas.style.height = '100%';
+    heatCanvas.style.pointerEvents = 'none';
+    heatCanvas.style.zIndex = '999';
+
+    document.getElementById('leafmap')
+      .appendChild(heatCanvas);
+
+    heatCtx = heatCanvas.getContext('2d');
+
+    map.on('move zoom resize', drawHeatCanvas);
+  }
+  
   drawHeatCanvas();
 }
 
-function drawHeatCanvas() {
-  if (!heatCanvas || !map) return;
-  if (!document.getElementById('lyr-hm').checked) return;
+function drawHeatCanvas(){
 
-  const leafmap = document.getElementById('leafmap');
-  const W = leafmap.offsetWidth;
-  const H = leafmap.offsetHeight;
-  if (!W || !H) return;
+  if(!heatCanvas || !heatCtx) return;
 
-  heatCanvas.width  = W;
-  heatCanvas.height = H;
+  const mapEl =
+    document.getElementById('leafmap');
 
-  const ctx = heatCanvas.getContext('2d');
-  ctx.clearRect(0, 0, W, H);
-  if (_heatPts.length === 0) return;
+  const w = mapEl.clientWidth;
+  const h = mapEl.clientHeight;
 
-  const RADIUS = 50;
+  heatCanvas.width = w;
+  heatCanvas.height = h;
+
+  heatCtx.clearRect(0,0,w,h);
 
   _heatPts.forEach(p => {
-    const px = map.latLngToContainerPoint(L.latLng(p.lat, p.lng));
-    const x  = px.x;
-    const y  = px.y;
-    if (x < -RADIUS || x > W + RADIUS || y < -RADIUS || y > H + RADIUS) return;
 
-    const g = ctx.createRadialGradient(x, y, 0, x, y, RADIUS);
-    g.addColorStop(0.0, 'rgba(255,  30,   0, 0.5)');
-    g.addColorStop(0.3, 'rgba(255, 160,   0, 0.35)');
-    g.addColorStop(0.6, 'rgba(  0, 255, 100, 0.2)');
-    g.addColorStop(1.0, 'rgba(  0, 200, 255, 0)');
+    const point =
+      map.latLngToContainerPoint([p.lat, p.lng]);
 
-    ctx.beginPath();
-    ctx.fillStyle = g;
-    ctx.arc(x, y, RADIUS, 0, Math.PI * 2);
-    ctx.fill();
+    const x = point.x;
+    const y = point.y;
+
+    const grd =
+      heatCtx.createRadialGradient(
+        x, y, 0,
+        x, y, 40
+      );
+
+    grd.addColorStop(0,'rgba(255,0,0,0.7)');
+    grd.addColorStop(0.5,'rgba(255,255,0,0.35)');
+    grd.addColorStop(1,'rgba(255,255,0,0)');
+
+    heatCtx.fillStyle = grd;
+
+    heatCtx.beginPath();
+    heatCtx.arc(x, y, 40, 0, Math.PI * 2);
+    heatCtx.fill();
+
   });
+
 }
  
 window.addEventListener('resize', () => {
