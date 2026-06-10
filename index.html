@@ -15,6 +15,7 @@
 #sidebar{
   position: relative;
   transition: .35s ease;
+  z-index: 1000;
 }
 #sidebar.closed{
   transform: translateX(-300px);
@@ -182,18 +183,18 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 .musr-n{font-size:12px;font-weight:600;color:rgba(255,255,255,.8)}
 .musr-av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--navy)}
 
-#map-main{display:relative;flex:1;overflow:hidden}
+#map-main{position:relative;flex:1;overflow:hidden}
 #sidebar{
 
   position: absolute;
 
-  top: 56px;
+  top: 0px;
 
   left: 0;
 
   width: 300px;
 
-  height: calc(100% - 56px);
+  height: calc(100%);
 
   z-index: 1000;
 
@@ -578,7 +579,7 @@ canvas{
 <!-- LANDING -->
 <div class="page" id="pg-home" style="flex-direction:column;overflow-y:auto;overflow-x:hidden">
   <nav class="nav">
-    <div class="nav-brand"><span>🌐</span></div>
+    <div class="nav-brand"><span>🌐 Smart Telecom GIS</span></div>
     <div class="nav-links">
       <button class="nav-link" onclick="smoothScroll('#fitur')">Fitur</button>
       <button class="nav-link" onclick="smoothScroll('#tim')">Tim</button>
@@ -1034,17 +1035,8 @@ canvas{
       <div class="lg-i">
         <div class="lg-d"
             style="
-              background:#00ffff;
-              box-shadow:0 0 8px #00ffff">
-        </div>
-        Sangat Rendah
-      </div>
-
-      <div class="lg-i">
-        <div class="lg-d"
-            style="
-              background:#0088ff;
-              box-shadow:0 0 8px #0088ff">
+              background:#FFDC00;
+              box-shadow:0 0 10px 3px rgba(255,220,0,0.75), 0 0 4px rgba(255,220,0,1)">
         </div>
         Rendah
       </div>
@@ -1052,8 +1044,8 @@ canvas{
       <div class="lg-i">
         <div class="lg-d"
             style="
-              background:#00ff99;
-              box-shadow:0 0 8px #00ff99">
+              background:#FF6400;
+              box-shadow:0 0 10px 3px rgba(255,100,0,0.75), 0 0 4px rgba(255,100,0,1)">
         </div>
         Sedang
       </div>
@@ -1061,19 +1053,10 @@ canvas{
       <div class="lg-i">
         <div class="lg-d"
             style="
-              background:#ffee00;
-              box-shadow:0 0 8px #ffee00">
+              background:#DC0000;
+              box-shadow:0 0 10px 3px rgba(220,0,0,0.75), 0 0 4px rgba(220,0,0,1)">
         </div>
         Tinggi
-      </div>
-
-      <div class="lg-i">
-        <div class="lg-d"
-            style="
-              background:#ff2200;
-              box-shadow:0 0 8px #ff2200">
-        </div>
-        Sangat Tinggi
       </div>
     </div>
   <div id="ibar">

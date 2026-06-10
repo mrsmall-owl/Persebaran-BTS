@@ -109,14 +109,20 @@ function enterMap(u) {
   document.getElementById('u-nm').textContent   = u.fname || 'Guest';
   document.getElementById('um-name').textContent  = u.name || 'Guest User';
   document.getElementById('um-email').textContent = u.role === 'guest' ? 'Mode Demo' : u.email;
-  showPage('pg-map'); 
+  showPage('pg-map');
 
-  setTimeout(() => {
-    if(map){
-      map.invalidateSize(true);
-      renderHeat(getFiltered()); 
-    }
-  }, 400);
+  // Double RAF: frame pertama DOM visible, frame kedua layout sudah dihitung
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (map) {
+        map.invalidateSize(true);
+        // Tunggu 200ms lagi biar tile selesai reflow sebelum heatmap digambar
+        setTimeout(() => {
+          renderHeat(getFiltered());
+        }, 200);
+      }
+    });
+  });
 }
 
 
@@ -229,11 +235,26 @@ function initMap() {
     document.getElementById('c-lng').textContent = e.latlng.lng.toFixed(5);
   });
   map.on('zoomend', () => document.getElementById('c-zm').textContent = map.getZoom());
+  // Gambar ulang heatmap setiap kali view berubah
+  map.on('moveend zoomend resize', drawHeatCanvas);
+  map.on('zoom', () => { if (heatCanvas) heatCanvas.style.opacity = '0.4'; });
+  map.on('zoomend', () => {
+    if (heatCanvas) heatCanvas.style.opacity = '1';
+    drawHeatCanvas();
+  });
 
   // #MAP — Inisialisasi layer group: cluster & non-cluster
   cgr = L.markerClusterGroup({ chunkedLoading: true });
   pgr = L.layerGroup();
   map.addLayer(cgr);
+
+  map.getPane('markerPane').style.zIndex = 700;
+  map.getPane('popupPane').style.zIndex  = 800;
+
+  // Pastikan overlayPane sebagai containing block agar canvas bisa absolute di dalamnya
+  const op = map.getPane('overlayPane');
+  op.style.position = 'absolute';
+  op.style.zIndex   = '200';      // di bawah marker (700) & popup (800), di atas tile (100)
 
   // #FILTER — Render chip filter Kab/Kota secara dinamis dari data BTS
   const kabs = [
@@ -337,10 +358,13 @@ function initMap() {
   document.getElementById('lyr-hm').addEventListener('change', () => renderHeat(getFiltered()));
 
   renderMap();
-  setTimeout(() => {
-    map.invalidateSize();
-    renderHeat(getFiltered());
-  }, 300);
+  // Tunggu peta benar-benar selesai dirender sebelum draw heatmap pertama kali
+  map.whenReady(() => {
+    setTimeout(() => {
+      map.invalidateSize(true);
+      renderHeat(getFiltered());
+    }, 300);
+  });
 }
 
 // #MAP — Ambil data BTS yang lolos semua filter aktif
@@ -473,16 +497,15 @@ function renderMap() {
   document.getElementById('stot').textContent   = f.length;
   renderList(f);
   renderStats(f);
-  setTimeout(() => {
-    if(map){
+  // RAF: tunggu marker selesai dirender ke DOM baru gambar heatmap
+  requestAnimationFrame(() => {
+    if (map) {
       map.invalidateSize();
+      renderHeat(f);
     }
-    renderHeat(f);
     const chartEl = document.getElementById('yearChart');
-    if(chartEl){
-      renderYearChart(f);
-    }
-  }, 300);
+    if (chartEl) renderYearChart(f);
+  });
   updateExportInfo();
 }
 
@@ -723,90 +746,206 @@ function renderStats(f) {
 }
 
 // ============================================================
-// HEATMAP 
+// HEATMAP — Kernel Density Estimation (KDE) — 3 Kelas Ringan
+//
+// Landasan Teori:
+// 1. BANDWIDTH — Silverman's Rule of Thumb (1986):
+//    h = 1.06 * σ * n^(-1/5)
+//    Sumber: Silverman, B.W. (1986). Density Estimation for
+//    Statistics and Data Analysis. Chapman & Hall, London.
+//
+// 2. KERNEL FUNCTION — Epanechnikov Kernel:
+//    K(u) = 0.75 * (1 - u²),  u ≤ 1
+//    Dipilih karena secara matematis paling optimal (minimum
+//    mean integrated squared error / MISE).
+//    Sumber: Epanechnikov, V.A. (1969). Non-parametric estimation
+//    of a multivariate probability density. Theory of Probability
+//    and Its Applications, 14(1), 153–158.
+//
+// 3. KLASIFIKASI 3 KELAS — Quantile-based Thresholding:
+//    Rendah  : density ≤ Q67  → Hijau  (#00C853)
+//    Sedang  : Q67 < density ≤ Q90 → Biru   (#2979FF)
+//    Tinggi  : density > Q90  → Merah  (#D50000)
+//    Sumber: Chainey, S., Tompson, L., & Uhlig, S. (2008).
+//    The utility of hotspot mapping for predicting spatial
+//    patterns of crime. Security Journal, 21(1–2), 4–28.
 // ============================================================
 
 let heatCanvas = null;
-let heatCtx = null;
-let _heatPts = [];
+let heatCtx    = null;
+let _heatPts   = [];
 
-function renderHeat(data){
-
-  if(!map) return;
-
-  _heatPts = data.map(d => ({
-    lat: parseFloat(d.latitude),
-    lng: parseFloat(d.longitude)
-  }));
-
-  if(!heatCanvas){
-    heatCanvas = document.createElement('canvas');
-    heatCanvas.id = 'heat-canvas';
-
-    heatCanvas.style.position = 'absolute';
-    heatCanvas.style.top = '0';
-    heatCanvas.style.left = '0';
-    heatCanvas.style.width = '100%';
-    heatCanvas.style.height = '100%';
-    heatCanvas.style.pointerEvents = 'none';
-    heatCanvas.style.zIndex = '400';
-
-    map.getPanes().overlayPane
-      .appendChild(heatCanvas);
-
-    heatCtx = heatCanvas.getContext('2d');
-
-    map.on('move zoom resize', drawHeatCanvas);
-  }
+// #HEATMAP — Silverman's Rule of Thumb: h = 1.06 * σ * n^(-1/5)
+function kdeBandwidth(pts) {
+  const n = pts.length;
+  if (n < 2) return 60;
+  const mx = pts.reduce((s, p) => s + p.x, 0) / n;
+  const my = pts.reduce((s, p) => s + p.y, 0) / n;
+  const vx = pts.reduce((s, p) => s + (p.x - mx) ** 2, 0) / n;
+  const vy = pts.reduce((s, p) => s + (p.y - my) ** 2, 0) / n;
+  const sigma = Math.sqrt((vx + vy) / 2);
+  return Math.max(20, Math.min(130, 1.06 * sigma * Math.pow(n, -0.2)));
 }
 
-function drawHeatCanvas(){
+// #HEATMAP — Epanechnikov Kernel: K(u) = 0.75*(1−u²), u≤1
+function epanechnikov(d, h) {
+  const u = d / h;
+  return u <= 1 ? 0.75 * (1 - u * u) : 0;
+}
 
-  if(!heatCanvas || !heatCtx) return;
+// #HEATMAP — Perbarui canvas heatmap (dipanggil saat data / view berubah)
+function renderHeat(data) {
+  if (!map) return;
 
-  const mapEl =
-    document.getElementById('leafmap');
+  const hmOn = document.getElementById('lyr-hm');
+  if (hmOn && !hmOn.checked) {
+    // Sembunyikan canvas jika toggle heatmap off
+    if (heatCanvas) heatCanvas.style.display = 'none';
+    return;
+  }
 
-  const w = mapEl.clientWidth;
-  const h = mapEl.clientHeight;
+  _heatPts = data
+    .map(d => ({ lat: parseFloat(d.latitude), lng: parseFloat(d.longitude) }))
+    .filter(p => !isNaN(p.lat) && !isNaN(p.lng));
 
-  heatCanvas.width = w;
-  heatCanvas.height = h;
+  if (!heatCanvas) {
+    heatCanvas = document.createElement('canvas');
+    heatCtx    = heatCanvas.getContext('2d');
+    Object.assign(heatCanvas.style, {
+      position:      'relative',
+      top:           '0',
+      left:          '0',
+      pointerEvents: 'none',
+      zIndex:        '400'
+    });
+    // Taruh di map container langsung — tidak ikut transform pan/zoom Leaflet
+    map.getContainer().appendChild(heatCanvas);
+  }
 
-  heatCtx.clearRect(0,0,w,h);
+  heatCanvas.style.display = '';
 
-  _heatPts.forEach(p => {
+  // Cek apakah container sudah punya ukuran — kalau belum retry sampai 5x
+  const container = map.getContainer();
+  if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+    let retries = 0;
+    const retryDraw = () => {
+      if (retries++ > 10) return; // maks 10 retry (~1 detik)
+      if (container.offsetWidth > 0 && container.offsetHeight > 0) {
+        map.invalidateSize(true);
+        drawHeatCanvas();
+      } else {
+        setTimeout(retryDraw, 100);
+      }
+    };
+    setTimeout(retryDraw, 100);
+    return;
+  }
 
-    const point =
-      map.latLngToContainerPoint([p.lat, p.lng]);
+  drawHeatCanvas();
+}
 
-    const x = point.x;
-    const y = point.y;
+// #HEATMAP — Gambar ulang heatmap ke canvas sesuai viewport peta saat ini
+function drawHeatCanvas() {
+  if (!heatCanvas || !heatCtx || !map) return;
 
-    const grd =
-      heatCtx.createRadialGradient(
-        x, y, 0,
-        x, y, 40
-      );
+  const container = map.getContainer();
+  const W = container.offsetWidth;
+  const H = container.offsetHeight;
+  if (W === 0 || H === 0) return;
 
-    grd.addColorStop(0,'rgba(255,0,0,0.7)');
-    grd.addColorStop(0.5,'rgba(255,255,0,0.35)');
-    grd.addColorStop(1,'rgba(255,255,0,0)');
+  // Resize canvas hanya kalau ukuran berubah (hemat redraw)
+  if (heatCanvas.width !== W || heatCanvas.height !== H) {
+    heatCanvas.width  = W;
+    heatCanvas.height = H;
+    heatCanvas.style.width  = W + 'px';
+    heatCanvas.style.height = H + 'px';
+  }
+  heatCtx.clearRect(0, 0, W, H);
 
-    heatCtx.fillStyle = grd;
+  if (_heatPts.length === 0) return;
 
-    heatCtx.beginPath();
-    heatCtx.arc(x, y, 40, 0, Math.PI * 2);
-    heatCtx.fill();
-
+  // Proyeksikan titik geografis → pixel layar
+  const screen = _heatPts.map(p => {
+    const pt = map.latLngToContainerPoint([p.lat, p.lng]);
+    return { x: pt.x, y: pt.y };
   });
 
-}
- 
-window.addEventListener('resize', () => {
-  if(map){
-    map.invalidateSize();
+  // Bandwidth Silverman (dalam satuan pixel)
+  const h = kdeBandwidth(screen);
+
+  // Grid sampling 6 px — cukup halus, tetap ringan
+  const CELL = 6;
+  const cols = Math.ceil(W / CELL);
+  const rows = Math.ceil(H / CELL);
+  const density = new Float32Array(cols * rows);
+  let maxD = 0;
+
+  for (let r = 0; r < rows; r++) {
+    const cy = r * CELL + CELL / 2;
+    for (let c = 0; c < cols; c++) {
+      const cx = c * CELL + CELL / 2;
+      let d = 0;
+      for (let i = 0; i < screen.length; i++) {
+        const dx = cx - screen[i].x;
+        const dy = cy - screen[i].y;
+        d += epanechnikov(Math.sqrt(dx * dx + dy * dy), h);
+      }
+      density[r * cols + c] = d;
+      if (d > maxD) maxD = d;
+    }
   }
+
+  if (maxD === 0) return;
+
+  // ── Quantile thresholding (Chainey et al., 2008) ──────────
+  const nonzero = Array.from(density).filter(v => v > 0).sort((a, b) => a - b);
+  const q67 = nonzero[Math.floor(nonzero.length * 0.67)] || maxD * 0.45;
+  const q90 = nonzero[Math.floor(nonzero.length * 0.90)] || maxD * 0.75;
+
+  // ── Render ke offscreen canvas dulu baru blur ─────────────
+  const offscreen = document.createElement('canvas');
+  offscreen.width  = W;
+  offscreen.height = H;
+  const offCtx = offscreen.getContext('2d');
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const d = density[r * cols + c];
+      if (d <= 0) continue;
+
+      let R, G, B, A;
+
+      if (d <= q67) {
+        // RENDAH — kuning
+        const t = d / q67;
+        R = 255; G = 220; B = 0;
+        A = 0.18 + t * 0.28;
+      } else if (d <= q90) {
+        // SEDANG — orange
+        const t = (d - q67) / (q90 - q67);
+        R = 255; G = 100; B = 0;
+        A = 0.48 + t * 0.16;
+      } else {
+        // TINGGI — merah
+        const t = Math.min(1, (d - q90) / ((maxD - q90) || 1));
+        R = 220; G = 0; B = 0;
+        A = 0.65 + t * 0.28;
+      }
+
+      offCtx.fillStyle = `rgba(${R},${G},${B},${A.toFixed(2)})`;
+      offCtx.fillRect(c * CELL, r * CELL, CELL + 1, CELL + 1); // +1 biar gap antar sel tidak kelihatan
+    }
+  }
+
+  // Gaussian blur untuk menghaluskan tepian
+  heatCtx.clearRect(0, 0, W, H);
+  heatCtx.filter = 'blur(10px)';
+  heatCtx.drawImage(offscreen, 0, 0);
+  heatCtx.filter = 'none';
+}
+
+window.addEventListener('resize', () => {
+  if (map) { map.invalidateSize(); drawHeatCanvas(); }
 });
 
 // #MAP — Pilih BTS: fly to marker, buka popup, highlight item daftar
@@ -820,6 +959,9 @@ function selBTS(id) {
     [d.latitude, d.longitude],
     map.getZoom()
   );
+
+  map.once('moveend', drawHeatCanvas);
+  
   setTimeout(() => {
     const m = mm[id];
     if (m) { if (clMode) cgr.zoomToShowLayer(m, () => m.openPopup()); else m.openPopup(); }
