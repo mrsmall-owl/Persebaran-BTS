@@ -4,6 +4,9 @@ const express = require("express");
 const { Pool } = require("pg");
 const cors = require("cors");
 
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+
 const app = express();
 
 app.use(cors({
@@ -75,6 +78,70 @@ app.get("/bts", async (req, res) => {
   }
 
 });
+
+// ======================
+// REGISTER
+// ======================
+
+app.post("/register", async (req, res) => {
+
+  try {
+
+    const {
+      first_name,
+      last_name,
+      email,
+      institution,
+      password
+    } = req.body;
+
+    // cek email sudah ada atau belum
+    const checkUser = await pool.query(
+      "SELECT * FROM users WHERE email = $1",
+      [email]
+    );
+
+    if (checkUser.rows.length > 0) {
+      return res.status(400).json({
+        message: "Email sudah terdaftar"
+      });
+    }
+
+    // hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // simpan user
+    await pool.query(
+      `
+      INSERT INTO users
+      (first_name, last_name, email, institution, password)
+      VALUES ($1, $2, $3, $4, $5)
+      `,
+      [
+        first_name,
+        last_name,
+        email,
+        institution,
+        hashedPassword
+      ]
+    );
+
+    res.status(201).json({
+      message: "Registrasi berhasil"
+    });
+
+  } catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+
+  }
+
+});
+
 
 // ======================
 // JALANKAN SERVER

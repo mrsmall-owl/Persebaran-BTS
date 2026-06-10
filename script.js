@@ -451,9 +451,32 @@ function mkPopup(d) {
         <div class="pu-fv">${d.alamat}</div>
       </div>
 
-    </div>
+      <div class="pu-f" style="grid-column:span 2; margin-top:8px; padding:0; overflow:hidden">
+        <a
+          href="https://www.google.com/maps?q=${d.latitude},${d.longitude}"
+          target="_blank"
+          style="
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            width:100%;
+            padding:12px;
+            background:rgba(0,229,255,.12);
+            border:1px solid rgba(0,229,255,.3);
+            border-radius:6px;
+            color:#7ffcff;
+            text-decoration:none;
+            font-weight:700;
+            font-size:13px;
+            transition:.2s;
+          ">
+          📍&nbsp;Buka di Google Maps
+        </a>
+      </div>
 
-  </div>`;
+      </div>
+
+      </div>`;
 }
 
 // #EXPORT — Update informasi export berdasarkan filter aktif
@@ -812,7 +835,7 @@ function renderHeat(data) {
     heatCanvas = document.createElement('canvas');
     heatCtx    = heatCanvas.getContext('2d');
     Object.assign(heatCanvas.style, {
-      position:      'relative',
+      position:      'absolute',
       top:           '0',
       left:          '0',
       pointerEvents: 'none',
